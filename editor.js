@@ -1,6 +1,7 @@
 /**
  * OMNILAB - RICH TEXT EDITOR ENGINE
- * Fully manages formatting, font selection, alignments, lists, and line height.
+ * Fully manages formatting, font selection, alignments, lists, line height,
+ * keyboard shortcuts, undo/redo, and a quick scientific-symbol palette.
  */
 
 class RichTextEditor {
@@ -8,6 +9,7 @@ class RichTextEditor {
         this.editor = document.getElementById('text-editor');
         this.initControls();
         this.initEvents();
+        this.initSymbolPalette();
     }
 
     initControls() {
@@ -17,7 +19,7 @@ class RichTextEditor {
         this.btnItalic = document.getElementById('btn-italic');
         this.btnUnderline = document.getElementById('btn-underline');
         this.btnStrikethrough = document.getElementById('btn-strikethrough');
-        
+
         this.btnAlignLeft = document.getElementById('btn-align-left');
         this.btnAlignCenter = document.getElementById('btn-align-center');
         this.btnAlignRight = document.getElementById('btn-align-right');
@@ -28,7 +30,11 @@ class RichTextEditor {
 
         this.btnBulletList = document.getElementById('btn-bullet-list');
         this.btnNumberList = document.getElementById('btn-number-list');
+        this.btnFormula = document.getElementById('btn-formula');
         this.lineHeightSelect = document.getElementById('line-height');
+
+        this.btnUndo = document.getElementById('btn-undo-text');
+        this.btnRedo = document.getElementById('btn-redo-text');
     }
 
     initEvents() {
@@ -56,8 +62,84 @@ class RichTextEditor {
             this.setLineHeight(e.target.value);
         });
 
+        this.btnUndo.addEventListener('click', () => this.exec('undo'));
+        this.btnRedo.addEventListener('click', () => this.exec('redo'));
+
+        // Explicit keyboard shortcuts (kept in addition to native contenteditable behaviour
+        // for consistency across browsers)
+        this.editor.addEventListener('keydown', (e) => {
+            const ctrl = e.ctrlKey || e.metaKey;
+            if (!ctrl) return;
+            const key = e.key.toLowerCase();
+            if (key === 'b') { e.preventDefault(); this.exec('bold'); }
+            else if (key === 'i') { e.preventDefault(); this.exec('italic'); }
+            else if (key === 'u') { e.preventDefault(); this.exec('underline'); }
+        });
+
         // Keep Selection Active State Synced
         document.addEventListener('selectionchange', () => this.updateActiveStates());
+    }
+
+    initSymbolPalette() {
+        const symbols = ['√', 'π', '∞', '≤', '≥', '±', '→', 'Δ', 'θ', 'α', 'β', 'Σ', '∫', '·', '²', '³', '₂', '°'];
+
+        this.palette = document.createElement('div');
+        this.palette.className = 'symbol-palette hidden';
+        this.palette.setAttribute('role', 'menu');
+        Object.assign(this.palette.style, {
+            position: 'absolute', display: 'grid',
+            gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px',
+            background: 'var(--paper-panel)', border: '1px solid var(--border-color)',
+            borderRadius: '10px', padding: '8px', boxShadow: 'var(--shadow-lg)',
+            zIndex: '500'
+        });
+        this.palette.classList.add('hidden');
+
+        symbols.forEach(sym => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = sym;
+            Object.assign(b.style, {
+                width: '30px', height: '30px', border: 'none', borderRadius: '7px',
+                background: 'var(--paper-sunken)', color: 'var(--text-ink)', cursor: 'pointer',
+                fontSize: '14px'
+            });
+            b.addEventListener('mouseenter', () => b.style.background = 'var(--accent-soft)');
+            b.addEventListener('mouseleave', () => b.style.background = 'var(--paper-sunken)');
+            b.addEventListener('click', () => {
+                this.insertTextAtCursor(sym);
+                this.hidePalette();
+            });
+            this.palette.appendChild(b);
+        });
+
+        document.body.appendChild(this.palette);
+
+        this.btnFormula.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.togglePalette();
+        });
+        document.addEventListener('click', (e) => {
+            if (!this.palette.contains(e.target) && e.target !== this.btnFormula) this.hidePalette();
+        });
+    }
+
+    togglePalette() {
+        if (this.palette.classList.contains('hidden')) this.showPalette();
+        else this.hidePalette();
+    }
+
+    showPalette() {
+        const rect = this.btnFormula.getBoundingClientRect();
+        this.palette.style.top = `${rect.bottom + window.scrollY + 6}px`;
+        this.palette.style.left = `${rect.left + window.scrollX}px`;
+        this.palette.classList.remove('hidden');
+        this.palette.style.display = 'grid';
+    }
+
+    hidePalette() {
+        this.palette.classList.add('hidden');
+        this.palette.style.display = 'none';
     }
 
     exec(command, value = null) {
@@ -125,6 +207,10 @@ class RichTextEditor {
 
     setContent(html) {
         this.editor.innerHTML = html;
+    }
+
+    getPlainText() {
+        return this.editor.innerText || this.editor.textContent || '';
     }
 
     clear() {
