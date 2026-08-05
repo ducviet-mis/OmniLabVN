@@ -90,31 +90,26 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const pdfCanvas = document.getElementById('pdf-canvas');
     const pdfCtx = pdfCanvas.getContext('2d');
+    const pdfPageStage = document.getElementById('pdf-page-stage');
+    const pdfDrawCanvas = document.getElementById('pdf-draw-canvas');
     const pdfPlaceholder = document.getElementById('pdf-placeholder');
     const pdfLoading = document.getElementById('pdf-loading');
     const pdfDocName = document.getElementById('pdf-doc-name');
 
-    // ----------------------------------------------------------------------
-    // 3. MODE SWITCHER (Text <-> Canvas)
-    // ----------------------------------------------------------------------
-    const btnModeText = document.getElementById('btn-mode-text');
-    const btnModeCanvas = document.getElementById('btn-mode-canvas');
-    const editorToolbar = document.getElementById('editor-toolbar');
-    const canvasToolbar = document.getElementById('canvas-toolbar');
+    // In-memory per-page store for direct PDF annotations (pageNum -> dataURL).
+    // Reset whenever a new document is loaded.
+    let pdfDrawings = new Map();
 
-    const setMode = (mode) => {
-        const isCanvas = mode === 'canvas';
-        btnModeText.classList.toggle('active', !isCanvas);
-        btnModeText.setAttribute('aria-selected', String(!isCanvas));
-        btnModeCanvas.classList.toggle('active', isCanvas);
-        btnModeCanvas.setAttribute('aria-selected', String(isCanvas));
-        document.body.classList.toggle('mode-canvas', isCanvas);
-        editorToolbar.classList.toggle('active', !isCanvas);
-        canvasToolbar.classList.toggle('active', isCanvas);
+    const savePdfPageDrawing = (num) => {
+        if (!pdfDrawCanvas.width || !pdfDrawCanvas.height) return;
+        pdfDrawings.set(num, pdfDrawCanvas.toDataURL());
     };
 
-    btnModeText.addEventListener('click', () => setMode('text'));
-    btnModeCanvas.addEventListener('click', () => setMode('canvas'));
+    const loadPdfPageDrawing = (num) => {
+        window.pdfDrawEngine.ctx.clearRect(0, 0, pdfDrawCanvas.width, pdfDrawCanvas.height);
+        const data = pdfDrawings.get(num);
+        if (data) window.pdfDrawEngine.loadCanvasData(data);
+    };
 
     // ----------------------------------------------------------------------
     // 4. SPLIT SCREEN RESIZER
@@ -154,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const viewport = page.getViewport({ scale });
             pdfCanvas.height = viewport.height;
             pdfCanvas.width = viewport.width;
+            window.pdfDrawEngine.resizeTo(viewport.width, viewport.height);
 
             const renderContext = {
                 canvasContext: pdfCtx,
@@ -163,9 +159,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const renderTask = page.render(renderContext);
             renderTask.promise.then(() => {
                 pageRendering = false;
+                loadPdfPageDrawing(num);
                 if (pageNumPending !== null) {
-                    renderPage(pageNumPending);
+                    const next = pageNumPending;
                     pageNumPending = null;
+                    renderPage(next);
                 }
             });
         });
@@ -197,9 +195,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const typedarray = new Uint8Array(this.result);
             pdfjsLib.getDocument(typedarray).promise.then((pdf) => {
                 pdfDoc = pdf;
+                pdfDrawings = new Map(); // fresh document — discard previous page annotations
                 document.getElementById('pdf-page-count').textContent = pdf.numPages;
                 pdfLoading.classList.add('hidden');
-                pdfCanvas.style.display = 'block';
+                pdfPageStage.style.display = 'block';
                 pdfDocName.textContent = file.name;
                 pageNum = 1;
                 renderPage(pageNum);
@@ -215,18 +214,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('pdf-prev').addEventListener('click', () => {
         if (!pdfDoc || pageNum <= 1) return;
+        savePdfPageDrawing(pageNum);
         pageNum--;
         queueRenderPage(pageNum);
     });
 
     document.getElementById('pdf-next').addEventListener('click', () => {
         if (!pdfDoc || pageNum >= pdfDoc.numPages) return;
+        savePdfPageDrawing(pageNum);
         pageNum++;
         queueRenderPage(pageNum);
     });
 
     document.getElementById('pdf-zoom-in').addEventListener('click', () => {
         if (!pdfDoc || scale >= 3) return;
+        savePdfPageDrawing(pageNum);
         scale += 0.2;
         document.getElementById('pdf-zoom-level').textContent = `${Math.round(scale * 100)}%`;
         queueRenderPage(pageNum);
@@ -234,6 +236,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('pdf-zoom-out').addEventListener('click', () => {
         if (!pdfDoc || scale <= 0.6) return;
+        savePdfPageDrawing(pageNum);
         scale -= 0.2;
         document.getElementById('pdf-zoom-level').textContent = `${Math.round(scale * 100)}%`;
         queueRenderPage(pageNum);
@@ -517,6 +520,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const graphInput = document.getElementById('graph-function-input');
     const graphCancel = document.getElementById('graph-cancel');
     const graphConfirm = document.getElementById('graph-confirm');
+    let graphTargetEngine = window.canvasEngine;
 
     const openGraphDialog = () => {
         graphModal.classList.remove('hidden');
@@ -525,12 +529,11 @@ document.addEventListener('DOMContentLoaded', () => {
     };
     const closeGraphDialog = () => graphModal.classList.add('hidden');
 
-    document.getElementById('tool-graph').addEventListener('click', () => {
-        // Keep tool-graph visually selectable alongside other canvas tools
-        document.querySelectorAll('#canvas-toolbar .tool-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById('tool-graph').classList.add('active');
+    // Called by DrawEngine when its "Vẽ đồ thị" pen-dock button is clicked
+    window.onGraphToolClick = (engine) => {
+        graphTargetEngine = engine;
         openGraphDialog();
-    });
+    };
 
     graphCancel.addEventListener('click', closeGraphDialog);
     graphModal.addEventListener('click', (e) => { if (e.target === graphModal) closeGraphDialog(); });
@@ -539,7 +542,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const fn = graphInput.value.trim();
         if (!fn) { showToast('Vui lòng nhập một hàm số.', 'error', 'fa-circle-exclamation'); return; }
         try {
-            window.canvasEngine.plotFunction(fn, evaluateExpression);
+            graphTargetEngine.plotFunction(fn, evaluateExpression);
             closeGraphDialog();
             showToast(`Đã vẽ đồ thị y = ${fn}`, 'info', 'fa-wave-square');
         } catch (err) {
@@ -635,8 +638,6 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             saveData();
         }
-        if (e.altKey && e.key === '1') { e.preventDefault(); setMode('text'); }
-        if (e.altKey && e.key === '2') { e.preventDefault(); setMode('canvas'); }
         if (e.key === 'Escape') {
             if (!graphModal.classList.contains('hidden')) closeGraphDialog();
             if (!casioModal.classList.contains('hidden')) casioModal.classList.add('hidden');
