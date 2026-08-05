@@ -32,17 +32,6 @@
             </div>
         </div>
 
-        <!-- Mode Selector -->
-        <div class="mode-switcher" role="tablist" aria-label="Chế độ làm việc">
-            <button id="btn-mode-text" class="mode-btn active" role="tab" aria-selected="true" title="Chế độ Soạn thảo Văn bản (Alt+1)">
-                <i class="fa-solid fa-pen-to-square"></i><span>Soạn Thảo</span>
-            </button>
-            <button id="btn-mode-canvas" class="mode-btn" role="tab" aria-selected="false" title="Chế độ Vẽ tay &amp; Kẻ hình (Alt+2)">
-                <i class="fa-solid fa-paintbrush"></i><span>Vẽ Tay</span>
-            </button>
-            <span class="mode-thumb" aria-hidden="true"></span>
-        </div>
-
         <!-- File Operations & Tools -->
         <div class="header-actions">
             <label for="pdf-upload" class="action-btn upload-btn" title="Tải file PDF lên">
@@ -92,7 +81,46 @@
                 <div id="pdf-loading" class="pdf-loading hidden">
                     <span class="spinner"></span> Đang tải tài liệu…
                 </div>
-                <canvas id="pdf-canvas"></canvas>
+
+                <!-- PDF page render layer + direct-annotation drawing layer -->
+                <div id="pdf-page-stage" class="pdf-page-stage">
+                    <canvas id="pdf-canvas"></canvas>
+                    <canvas id="pdf-draw-canvas"></canvas>
+                </div>
+
+                <!-- Floating Pen Dock — write / highlight directly on the PDF -->
+                <div class="pen-dock" id="pen-dock-pdf">
+                    <button type="button" class="pen-fab" id="pen-fab-pdf" title="Bút viết trực tiếp lên PDF (nhấn để mở công cụ)">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <div class="pen-popover" id="pen-popover-pdf">
+                        <div class="pen-pop-row">
+                            <button type="button" class="tool-btn active" data-tool="pen" title="Bút vẽ"><i class="fa-solid fa-pen"></i></button>
+                            <button type="button" class="tool-btn" data-tool="highlighter" title="Bút dạ quang (Highlight)"><i class="fa-solid fa-marker"></i></button>
+                            <button type="button" class="tool-btn" data-tool="eraser" title="Cục tẩy"><i class="fa-solid fa-eraser"></i></button>
+                            <button type="button" class="tool-btn" data-tool="line" title="Đường thẳng"><i class="fa-solid fa-slash"></i></button>
+                            <button type="button" class="tool-btn" data-tool="rect" title="Hình chữ nhật"><i class="fa-regular fa-square"></i></button>
+                            <button type="button" class="tool-btn" data-tool="circle" title="Hình tròn"><i class="fa-regular fa-circle"></i></button>
+                        </div>
+                        <div class="pen-pop-row">
+                            <label class="color-picker-wrapper" title="Màu nét vẽ">
+                                <i class="fa-solid fa-palette"></i>
+                                <input type="color" class="pen-color" value="#e11d48">
+                            </label>
+                            <select class="tool-select pen-width" title="Độ dày nét">
+                                <option value="2">Mỏng · 2px</option>
+                                <option value="4" selected>Vừa · 4px</option>
+                                <option value="8">Dày · 8px</option>
+                                <option value="16">Rất dày · 16px</option>
+                            </select>
+                        </div>
+                        <div class="pen-pop-row">
+                            <button type="button" class="tool-btn pen-undo" title="Hoàn tác (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
+                            <button type="button" class="tool-btn pen-redo" title="Làm lại (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i></button>
+                            <button type="button" class="tool-btn danger pen-clear" title="Xóa nét vẽ trên trang này"><i class="fa-solid fa-broom"></i><span>Xóa trang</span></button>
+                        </div>
+                    </div>
+                </div>
             </div>
         </section>
 
@@ -171,45 +199,6 @@
                         <button class="tool-btn" id="btn-redo-text" title="Làm lại (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i></button>
                     </div>
                 </div>
-
-                <!-- Canvas Drawing Toolbar -->
-                <div id="canvas-toolbar" class="toolbar-panel">
-                    <div class="tool-group">
-                        <button class="tool-btn active" id="tool-pen" title="Bút vẽ"><i class="fa-solid fa-pen"></i></button>
-                        <button class="tool-btn" id="tool-highlighter" title="Bút dạ quang (Highlight)"><i class="fa-solid fa-marker"></i></button>
-                        <button class="tool-btn" id="tool-eraser" title="Cục tẩy"><i class="fa-solid fa-eraser"></i></button>
-                    </div>
-
-                    <div class="tool-group">
-                        <button class="tool-btn" id="tool-line" title="Đường thẳng"><i class="fa-solid fa-slash"></i></button>
-                        <button class="tool-btn" id="tool-rect" title="Hình chữ nhật"><i class="fa-regular fa-square"></i></button>
-                        <button class="tool-btn" id="tool-circle" title="Hình tròn"><i class="fa-regular fa-circle"></i></button>
-                        <button class="tool-btn" id="tool-oxy" title="Hệ trục tọa độ Oxy"><i class="fa-solid fa-chart-line"></i></button>
-                        <button class="tool-btn" id="tool-graph" title="Vẽ đồ thị hàm số y=f(x)"><i class="fa-solid fa-wave-square"></i></button>
-                    </div>
-
-                    <div class="tool-group">
-                        <label class="color-picker-wrapper" title="Màu nét vẽ">
-                            <i class="fa-solid fa-palette"></i>
-                            <input type="color" id="canvas-color" value="#0284c7">
-                        </label>
-                        <select id="canvas-line-width" class="tool-select" title="Độ dày nét">
-                            <option value="2">Mỏng · 2px</option>
-                            <option value="4" selected>Vừa · 4px</option>
-                            <option value="8">Dày · 8px</option>
-                            <option value="16">Rất dày · 16px</option>
-                        </select>
-                    </div>
-
-                    <div class="tool-group">
-                        <button class="tool-btn" id="btn-undo-canvas" title="Hoàn tác (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
-                        <button class="tool-btn" id="btn-redo-canvas" title="Làm lại (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i></button>
-                    </div>
-
-                    <div class="tool-group">
-                        <button class="tool-btn danger" id="btn-clear-canvas" title="Xóa toàn bộ hình vẽ"><i class="fa-solid fa-broom"></i> <span>Xóa nét vẽ</span></button>
-                    </div>
-                </div>
             </div>
 
             <!-- Double Layer Canvas & Text Workspace -->
@@ -219,6 +208,44 @@
 
                 <!-- Layer 2: HTML5 Canvas Overlay -->
                 <canvas id="note-canvas"></canvas>
+
+                <!-- Floating Pen Dock — click to draw, collapses back to a single round button -->
+                <div class="pen-dock" id="pen-dock-note">
+                    <button type="button" class="pen-fab" id="pen-fab-note" title="Bút viết tay (nhấn để mở công cụ)">
+                        <i class="fa-solid fa-pen"></i>
+                    </button>
+                    <div class="pen-popover" id="pen-popover-note">
+                        <div class="pen-pop-row">
+                            <button type="button" class="tool-btn active" data-tool="pen" title="Bút vẽ"><i class="fa-solid fa-pen"></i></button>
+                            <button type="button" class="tool-btn" data-tool="highlighter" title="Bút dạ quang (Highlight)"><i class="fa-solid fa-marker"></i></button>
+                            <button type="button" class="tool-btn" data-tool="eraser" title="Cục tẩy"><i class="fa-solid fa-eraser"></i></button>
+                        </div>
+                        <div class="pen-pop-row">
+                            <button type="button" class="tool-btn" data-tool="line" title="Đường thẳng"><i class="fa-solid fa-slash"></i></button>
+                            <button type="button" class="tool-btn" data-tool="rect" title="Hình chữ nhật"><i class="fa-regular fa-square"></i></button>
+                            <button type="button" class="tool-btn" data-tool="circle" title="Hình tròn"><i class="fa-regular fa-circle"></i></button>
+                            <button type="button" class="tool-btn" data-tool="oxy" title="Hệ trục tọa độ Oxy"><i class="fa-solid fa-chart-line"></i></button>
+                            <button type="button" class="tool-btn" data-tool="graph" title="Vẽ đồ thị hàm số y=f(x)"><i class="fa-solid fa-wave-square"></i></button>
+                        </div>
+                        <div class="pen-pop-row">
+                            <label class="color-picker-wrapper" title="Màu nét vẽ">
+                                <i class="fa-solid fa-palette"></i>
+                                <input type="color" class="pen-color" value="#0284c7">
+                            </label>
+                            <select class="tool-select pen-width" title="Độ dày nét">
+                                <option value="2">Mỏng · 2px</option>
+                                <option value="4" selected>Vừa · 4px</option>
+                                <option value="8">Dày · 8px</option>
+                                <option value="16">Rất dày · 16px</option>
+                            </select>
+                        </div>
+                        <div class="pen-pop-row">
+                            <button type="button" class="tool-btn pen-undo" title="Hoàn tác (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
+                            <button type="button" class="tool-btn pen-redo" title="Làm lại (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i></button>
+                            <button type="button" class="tool-btn danger pen-clear" title="Xóa nét vẽ"><i class="fa-solid fa-broom"></i><span>Xóa</span></button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Status / Telemetry Footer -->
