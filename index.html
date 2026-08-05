@@ -3,14 +3,22 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>StudyStation Pro</title>
+  <title>StudyStation Pro - Nền Tảng Học Tập Đa Năng</title>
+  
   <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- FontAwesome Icons -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <!-- Split.js (Thanh kéo rê chia màn hình) -->
+  <!-- Split.js (Chia màn hình) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/split.js/1.6.5/split.min.js"></script>
-  
+  <!-- Fabric.js (Canvas & Drawing Engine) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.1/fabric.min.js"></script>
+  <!-- PDF.js Engine -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
+  <!-- Custom Styles -->
+  <link rel="stylesheet" href="style.css">
+
   <script>
     tailwind.config = {
       theme: {
@@ -26,95 +34,156 @@
       }
     }
   </script>
-  <style>
-    /* Style cho thanh ranh giới kéo rê (Gutter) */
-    .gutter {
-      background-color: #BAE6FD;
-      background-repeat: no-repeat;
-      background-position: center;
-      cursor: col-resize;
-      transition: background-color 0.2s;
-    }
-    .gutter:hover { background-color: #38BDF8; }
-  </style>
 </head>
-<body class="bg-studyBg h-screen w-screen overflow-hidden flex flex-col font-sans">
+<body class="bg-studyBg h-screen w-screen overflow-hidden flex flex-col font-sans select-none">
 
-  <!-- HEADER / TOOLBAR TRÊN CÙNG -->
-  <header class="h-14 bg-white border-b border-studyBorder flex items-center justify-between px-6 z-10">
+  <!-- HEADER TRÊN CÙNG -->
+  <header class="h-14 bg-white border-b border-studyBorder flex items-center justify-between px-6 z-10 shrink-0">
     <div class="flex items-center gap-3">
-      <div class="w-8 h-8 rounded-full bg-studyAccent flex items-center justify-center text-white font-bold">S</div>
-      <h1 class="text-lg font-bold text-slate-700">StudyStation <span class="text-studyAccentDark">Pro</span></h1>
+      <div class="w-9 h-9 rounded-full bg-studyAccent flex items-center justify-center text-white font-black text-xl shadow-sm">S</div>
+      <h1 class="text-lg font-bold text-slate-800 tracking-tight">StudyStation <span class="text-studyAccentDark">Pro</span></h1>
     </div>
-    <div class="flex gap-2">
-      <button class="px-4 py-1.5 rounded-full bg-studyBg text-studyAccentDark font-medium text-sm hover:bg-studyBorder transition">
-        <i class="fa-solid fa-folder-open mr-1"></i> Mở file
+
+    <!-- Actions Toolbar -->
+    <div class="flex items-center gap-2">
+      <label class="px-4 py-2 rounded-full bg-studyBg text-studyAccentDark font-medium text-xs hover:bg-studyBorder transition cursor-pointer flex items-center gap-2">
+        <i class="fa-solid fa-file-arrow-up"></i>
+        <span>Mở File PDF</span>
+        <input type="file" id="pdf-upload" accept="application/pdf" class="hidden">
+      </label>
+
+      <button id="btn-toggle-calc" class="w-9 h-9 rounded-full bg-slate-100 text-slate-700 hover:bg-studyAccent hover:text-white transition flex items-center justify-center" title="Máy tính Casio">
+        <i class="fa-solid fa-calculator"></i>
       </button>
-      <button class="px-4 py-1.5 rounded-full bg-studyAccentDark text-white font-medium text-sm hover:opacity-90 shadow-sm transition">
-        <i class="fa-solid fa-download mr-1"></i> Xuất PDF
+
+      <button id="btn-export" class="px-4 py-2 rounded-full bg-studyAccentDark text-white font-medium text-xs hover:opacity-95 shadow-sm transition flex items-center gap-2">
+        <i class="fa-solid fa-download"></i>
+        <span>Xuất File</span>
       </button>
     </div>
   </header>
 
-  <!-- BỐ CỤC CHÍNH CHIA ĐÔI MÀN HÌNH -->
-  <main class="flex-1 flex overflow-hidden p-3 gap-1">
+  <!-- MAIN WORKSPACE CHIA ĐÔI -->
+  <main class="flex-1 flex overflow-hidden p-2 gap-1 relative">
     
-    <!-- BÊN TRÁI: DOCUMENT VIEWER (PDF/DOCX) -->
-    <div id="left-pane" class="bg-studyCard rounded-2xl border border-studyBorder shadow-sm flex flex-col overflow-hidden">
-      <div class="p-3 border-b border-studyBorder bg-slate-50 flex justify-between items-center text-xs text-slate-500">
-        <span><i class="fa-regular fa-file-pdf text-red-500 mr-1"></i> Tai_lieu_hoc_tap.pdf</span>
-        <span>Trang 1 / 12</span>
+    <!-- BÊN TRÁI: DOCUMENT VIEWER (PDF READER) -->
+    <div id="left-pane" class="bg-studyCard rounded-2xl border border-studyBorder shadow-sm flex flex-col overflow-hidden relative">
+      <!-- PDF Top Navigation Bar -->
+      <div class="p-2 border-b border-studyBorder bg-slate-50 flex justify-between items-center text-xs text-slate-600">
+        <span id="pdf-filename" class="font-medium truncate max-w-[200px]"><i class="fa-regular fa-file-pdf text-red-500 mr-1"></i> Chưa chọn tài liệu</span>
+        <div class="flex items-center gap-2">
+          <button id="pdf-prev" class="w-7 h-7 rounded-full hover:bg-slate-200 flex items-center justify-center"><i class="fa-solid fa-chevron-left"></i></button>
+          <span>Trang <span id="pdf-page-num">0</span> / <span id="pdf-page-count">0</span></span>
+          <button id="pdf-next" class="w-7 h-7 rounded-full hover:bg-slate-200 flex items-center justify-center"><i class="fa-solid fa-chevron-right"></i></button>
+        </div>
       </div>
-      <div class="flex-1 flex items-center justify-center text-slate-400 bg-slate-100/50">
-        <p><i class="fa-solid fa-cloud-arrow-up text-3xl mb-2 block text-center"></i>Kéo thả file PDF vào đây</p>
+      
+      <!-- PDF Render Viewport -->
+      <div id="pdf-container" class="flex-1 overflow-auto bg-slate-200/60 p-4 flex justify-center items-start">
+        <canvas id="pdf-render-canvas" class="shadow-md rounded bg-white hidden"></canvas>
+        <div id="pdf-placeholder" class="m-auto text-center text-slate-400">
+          <i class="fa-solid fa-file-pdf text-5xl mb-3 text-slate-300"></i>
+          <p class="text-sm font-medium">Bấm "Mở File PDF" ở góc trên để tải tài liệu</p>
+        </div>
       </div>
     </div>
 
-    <!-- BÊN PHẢI: INTERACTIVE CANVAS / NOTE -->
+    <!-- BÊN PHẢI: INTERACTIVE CANVAS EDITOR -->
     <div id="right-pane" class="bg-studyCard rounded-2xl border border-studyBorder shadow-sm relative flex flex-col overflow-hidden">
-      <div class="p-3 border-b border-studyBorder bg-slate-50 flex justify-between items-center text-xs text-slate-500">
-        <span><i class="fa-solid fa-pen-to-square text-studyAccentDark mr-1"></i> Ghi chú & Luyện tập</span>
-        <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px]">Đã tự động lưu</span>
+      <!-- Workspace Top Bar -->
+      <div class="p-2 border-b border-studyBorder bg-slate-50 flex justify-between items-center text-xs text-slate-600">
+        <span class="font-medium"><i class="fa-solid fa-pen-to-square text-studyAccentDark mr-1"></i> Ghi chú & Bài làm</span>
+        <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px] font-semibold"><i class="fa-solid fa-check mr-1"></i>IndexedDB Active</span>
       </div>
       
-      <!-- Vùng Canvas ghi chép -->
-      <div class="flex-1 bg-white relative">
-        <!-- Lưới chấm bi (Dot grid) làm nền -->
-        <div class="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]"></div>
+      <!-- Fabric Canvas Container -->
+      <div id="canvas-wrapper" class="flex-1 relative w-full h-full bg-white overflow-hidden">
+        <canvas id="note-canvas"></canvas>
       </div>
 
-      <!-- THANH CÔNG CỤ NỔI (FLOATING TOOLBAR) - Thiết kế Pill/Circle Glassmorphism -->
-      <div class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-md border border-studyBorder p-1.5 rounded-full shadow-lg flex items-center gap-1 z-20">
-        <button title="Con trỏ" class="w-10 h-10 rounded-full flex items-center justify-center text-slate-600 hover:bg-studyBg transition">
+      <!-- FLOATING TOOLBAR (THANH CÔNG CỤ BO TRÒN FLOATING) -->
+      <div class="absolute bottom-5 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md border border-studyBorder p-1.5 rounded-full shadow-glass flex items-center gap-1.5 z-20">
+        <button id="tool-select" title="Chọn / Di chuyển (Lasso)" class="w-9 h-9 rounded-full flex items-center justify-center text-slate-600 hover:bg-studyBg active:scale-95 transition active-tool">
           <i class="fa-solid fa-arrow-pointer"></i>
         </button>
-        <button title="Bút vẽ" class="w-10 h-10 rounded-full flex items-center justify-center bg-studyAccent text-white shadow-sm">
+        <button id="tool-pen" title="Bút vẽ" class="w-9 h-9 rounded-full flex items-center justify-center text-slate-600 hover:bg-studyBg active:scale-95 transition">
           <i class="fa-solid fa-pen"></i>
         </button>
-        <button title="Bút nhớ" class="w-10 h-10 rounded-full flex items-center justify-center text-slate-600 hover:bg-studyBg transition">
+        <button id="tool-highlighter" title="Bút nhớ dạ quang" class="w-9 h-9 rounded-full flex items-center justify-center text-slate-600 hover:bg-studyBg active:scale-95 transition">
           <i class="fa-solid fa-highlighter"></i>
         </button>
-        <button title="Tẩy" class="w-10 h-10 rounded-full flex items-center justify-center text-slate-600 hover:bg-studyBg transition">
+        <button id="tool-eraser" title="Tẩy nét vẽ" class="w-9 h-9 rounded-full flex items-center justify-center text-slate-600 hover:bg-studyBg active:scale-95 transition">
           <i class="fa-solid fa-eraser"></i>
         </button>
-        <div class="w-px h-6 bg-studyBorder mx-1"></div>
-        <button title="Soạn văn bản" class="w-10 h-10 rounded-full flex items-center justify-center text-slate-600 hover:bg-studyBg transition">
-          <i class="fa-solid fa-font"></i>
+        
+        <div class="w-px h-5 bg-studyBorder mx-0.5"></div>
+        
+        <!-- Color Picker Tool -->
+        <input type="color" id="tool-color" value="#0284c7" class="w-7 h-7 rounded-full border-0 cursor-pointer p-0 bg-transparent overflow-hidden">
+        
+        <!-- Shape Tools Dropdown -->
+        <button id="tool-rect" title="Vẽ hình chữ nhật" class="w-9 h-9 rounded-full flex items-center justify-center text-slate-600 hover:bg-studyBg active:scale-95 transition">
+          <i class="fa-regular fa-square"></i>
+        </button>
+        <button id="tool-circle" title="Vẽ hình tròn" class="w-9 h-9 rounded-full flex items-center justify-center text-slate-600 hover:bg-studyBg active:scale-95 transition">
+          <i class="fa-regular fa-circle"></i>
+        </button>
+        
+        <div class="w-px h-5 bg-studyBorder mx-0.5"></div>
+
+        <button id="tool-clear" title="Xóa toàn bộ Canvas" class="w-9 h-9 rounded-full flex items-center justify-center text-red-500 hover:bg-red-50 active:scale-95 transition">
+          <i class="fa-solid fa-trash-can"></i>
         </button>
       </div>
-
     </div>
 
   </main>
 
-  <!-- KÍCH HOẠT CHỨC NĂNG KÉO RÊ CHIA MÀN HÌNH -->
-  <script>
-    Split(['#left-pane', '#right-pane'], {
-      sizes: [50, 50],
-      minSize: 200,
-      gutterSize: 8,
-      cursor: 'col-resize'
-    });
-  </script>
+  <!-- WIDGET FLOATING CASIO CALCULATOR (KÉO RÊ ĐƯỢC) -->
+  <div id="casio-widget" class="fixed top-20 right-10 w-72 bg-slate-900 text-white rounded-3xl shadow-2xl z-50 overflow-hidden border border-slate-700 hidden">
+    <!-- Header máy tính để Drag -->
+    <div id="casio-header" class="bg-slate-800 p-3 cursor-move flex justify-between items-center select-none border-b border-slate-700">
+      <span class="text-xs font-bold text-slate-300 tracking-wider flex items-center gap-2">
+        <i class="fa-solid fa-grip-dots-vertical"></i> CASIO fx-580VN
+      </span>
+      <button id="casio-close" class="text-slate-400 hover:text-white text-xs w-6 h-6 rounded-full hover:bg-slate-700 flex items-center justify-center">
+        <i class="fa-solid fa-xmark"></i>
+      </button>
+    </div>
+    <!-- Màn hình máy tính -->
+    <div class="p-4 bg-slate-950 text-right">
+      <div id="casio-history" class="text-xs text-slate-500 h-4 overflow-hidden mb-1"></div>
+      <div id="casio-display" class="text-2xl font-mono text-emerald-400 font-bold overflow-x-auto whitespace-nowrap">0</div>
+    </div>
+    <!-- Phím bấm Casio -->
+    <div class="grid grid-cols-4 gap-1.5 p-3 bg-slate-900 text-sm font-semibold">
+      <button class="calc-btn text-red-400 bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">AC</button>
+      <button class="calc-btn text-yellow-400 bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">(</button>
+      <button class="calc-btn text-yellow-400 bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">)</button>
+      <button class="calc-btn text-sky-400 bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">÷</button>
+      
+      <button class="calc-btn bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">7</button>
+      <button class="calc-btn bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">8</button>
+      <button class="calc-btn bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">9</button>
+      <button class="calc-btn text-sky-400 bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">×</button>
+      
+      <button class="calc-btn bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">4</button>
+      <button class="calc-btn bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">5</button>
+      <button class="calc-btn bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">6</button>
+      <button class="calc-btn text-sky-400 bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">-</button>
+      
+      <button class="calc-btn bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">1</button>
+      <button class="calc-btn bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">2</button>
+      <button class="calc-btn bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">3</button>
+      <button class="calc-btn text-sky-400 bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">+</button>
+      
+      <button class="calc-btn bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">0</button>
+      <button class="calc-btn bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">.</button>
+      <button class="calc-btn text-slate-400 bg-slate-800 p-2.5 rounded-full hover:bg-slate-700">DEL</button>
+      <button id="calc-equals" class="bg-studyAccent text-white p-2.5 rounded-full hover:bg-studyAccentDark font-bold">=</button>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
 </body>
 </html>
