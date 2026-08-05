@@ -2,67 +2,81 @@
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OmniLab - Workspace Đọc PDF & Ghi Chú Thông Minh</title>
-    <!-- Google Fonts Integration -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>OmniLab — Workspace Đọc PDF &amp; Ghi Chú Khoa Học</title>
+    <meta name="description" content="OmniLab: không gian học tập song song giữa tài liệu PDF và ghi chú, hỗ trợ vẽ tay, công thức toán học và máy tính khoa học.">
+
+    <!-- Google Fonts: Space Grotesk (display/technical), Inter (UI/body), JetBrains Mono (data/telemetry), plus note-taking fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@400..700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400..700;1,400..700&family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&family=Courier+Prime:ital,wght@0,400;0,700;1,400&family=Dancing+Script:wght@400..700&family=Roboto:ital,wght@0,300;0,400;0,500;0,700;1,400&family=Playfair+Display:ital,wght@0,400..700;1,400..700&display=swap" rel="stylesheet">
+
     <!-- Font Awesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- PDF.js CDN -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <link rel="stylesheet" href="style.css">
+
+    <!-- Favicon (inline flask emoji) -->
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AA%3C/text%3E%3C/svg%3E">
 </head>
 <body>
 
     <!-- MAIN HEADER -->
     <header class="app-header">
         <div class="brand">
-            <i class="fa-solid fa-flask-vial logo-icon"></i>
-            <span class="logo-text">OmniLab</span>
+            <span class="logo-mark"><i class="fa-solid fa-flask-vial"></i></span>
+            <div class="brand-text">
+                <span class="logo-text">OmniLab</span>
+                <span class="logo-tagline">Không gian học tập khoa học</span>
+            </div>
         </div>
 
         <!-- Mode Selector -->
-        <div class="mode-switcher">
-            <button id="btn-mode-text" class="mode-btn active" title="Chế độ Soạn thảo Văn bản">
-                <i class="fa-solid fa-pen-to-square"></i> 📝 Soạn Thảo (Text)
+        <div class="mode-switcher" role="tablist" aria-label="Chế độ làm việc">
+            <button id="btn-mode-text" class="mode-btn active" role="tab" aria-selected="true" title="Chế độ Soạn thảo Văn bản (Alt+1)">
+                <i class="fa-solid fa-pen-to-square"></i><span>Soạn Thảo</span>
             </button>
-            <button id="btn-mode-canvas" class="mode-btn" title="Chế độ Vẽ tay & Kẻ hình">
-                <i class="fa-solid fa-paint-brush"></i> 🖊️ Vẽ Tay (Canvas)
+            <button id="btn-mode-canvas" class="mode-btn" role="tab" aria-selected="false" title="Chế độ Vẽ tay &amp; Kẻ hình (Alt+2)">
+                <i class="fa-solid fa-paintbrush"></i><span>Vẽ Tay</span>
             </button>
+            <span class="mode-thumb" aria-hidden="true"></span>
         </div>
 
         <!-- File Operations & Tools -->
         <div class="header-actions">
             <label for="pdf-upload" class="action-btn upload-btn" title="Tải file PDF lên">
-                <i class="fa-solid fa-file-arrow-up"></i> Mở PDF
+                <i class="fa-solid fa-file-arrow-up"></i> <span>Mở PDF</span>
             </label>
             <input type="file" id="pdf-upload" accept="application/pdf">
 
-            <button id="btn-toggle-casio" class="action-btn icon-btn" title="Mở Máy tính Casio">
+            <button id="btn-toggle-casio" class="action-btn icon-btn" title="Mở Máy tính Khoa học">
                 <i class="fa-solid fa-calculator"></i>
             </button>
-            <button id="btn-save" class="action-btn primary-btn" title="Lưu vào LocalStorage">
-                <i class="fa-solid fa-floppy-disk"></i> Lưu Bài
+            <button id="btn-toggle-theme" class="action-btn icon-btn" title="Đổi giao diện Sáng / Tối">
+                <i class="fa-solid fa-moon"></i>
+            </button>
+            <button id="btn-save" class="action-btn primary-btn" title="Lưu vào trình duyệt (Ctrl+S)">
+                <i class="fa-solid fa-floppy-disk"></i> <span>Lưu Bài</span>
             </button>
             <button id="btn-clear-all" class="action-btn danger-btn" title="Xóa dữ liệu trang">
-                <i class="fa-solid fa-trash-can"></i> Xóa Tất Cả
+                <i class="fa-solid fa-trash-can"></i>
             </button>
         </div>
     </header>
 
     <!-- MAIN SPLIT WORKSPACE -->
     <main class="main-container">
-        
+
         <!-- Left Column: PDF Viewer -->
         <section id="pdf-container" class="split-pane">
             <div class="pdf-toolbar">
                 <div class="pdf-controls">
-                    <button id="pdf-prev" class="tool-btn" title="Trang trước"><i class="fa-solid fa-chevron-left"></i></button>
-                    <span class="page-indicator">Trang <span id="pdf-page-num">0</span> / <span id="pdf-page-count">0</span></span>
-                    <button id="pdf-next" class="tool-btn" title="Trang sau"><i class="fa-solid fa-chevron-right"></i></button>
+                    <button id="pdf-prev" class="tool-btn" title="Trang trước (←)"><i class="fa-solid fa-chevron-left"></i></button>
+                    <span class="page-indicator"><span id="pdf-page-num">0</span> <span class="page-sep">/</span> <span id="pdf-page-count">0</span></span>
+                    <button id="pdf-next" class="tool-btn" title="Trang sau (→)"><i class="fa-solid fa-chevron-right"></i></button>
                 </div>
+                <div class="pdf-doc-name" id="pdf-doc-name">Chưa có tài liệu</div>
                 <div class="pdf-zoom-controls">
                     <button id="pdf-zoom-out" class="tool-btn" title="Thu nhỏ"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
                     <span id="pdf-zoom-level">100%</span>
@@ -71,32 +85,37 @@
             </div>
             <div id="pdf-render-wrapper" class="pdf-viewport">
                 <div id="pdf-placeholder" class="placeholder-state">
-                    <i class="fa-solid fa-file-pdf placeholder-icon"></i>
-                    <p>Chưa có file PDF nào được tải lên.</p>
-                    <p class="sub-text">Nhấn "Mở PDF" ở thanh trên để xem tài liệu.</p>
+                    <i class="fa-solid fa-flask placeholder-icon"></i>
+                    <p>Chưa có tài liệu PDF nào được nạp.</p>
+                    <p class="sub-text">Nhấn <strong>“Mở PDF”</strong> ở thanh trên để bắt đầu nghiên cứu tài liệu.</p>
+                </div>
+                <div id="pdf-loading" class="pdf-loading hidden">
+                    <span class="spinner"></span> Đang tải tài liệu…
                 </div>
                 <canvas id="pdf-canvas"></canvas>
             </div>
         </section>
 
         <!-- Resizer Divider -->
-        <div id="resizer" class="resizer-bar" title="Kéo rê để thay đổi kích thước 2 cột"></div>
+        <div id="resizer" class="resizer-bar" title="Kéo rê để thay đổi kích thước 2 cột">
+            <span class="resizer-grip"></span>
+        </div>
 
         <!-- Right Column: Note & Canvas Workspace -->
         <section id="workspace" class="split-pane">
-            
+
             <!-- Dynamic Toolbars Slot -->
             <div class="workspace-toolbars">
                 <!-- Rich Text Editor Toolbar -->
                 <div id="editor-toolbar" class="toolbar-panel active">
                     <select id="font-family" class="tool-select" title="Phông chữ">
-                        <option value="Inter" selected>Inter (Hiện đại)</option>
-                        <option value="Roboto">Roboto (Tiêu chuẩn)</option>
-                        <option value="Times New Roman">Times New Roman (Cổ điển)</option>
-                        <option value="Arial">Arial (Không chân)</option>
-                        <option value="Courier Prime">Courier Prime (Máy đánh chữ)</option>
-                        <option value="Playfair Display">Playfair Display (Sang trọng)</option>
-                        <option value="Dancing Script">Dancing Script (Viết tay)</option>
+                        <option value="Inter" selected>Inter · Hiện đại</option>
+                        <option value="Roboto">Roboto · Tiêu chuẩn</option>
+                        <option value="Times New Roman">Times New Roman · Cổ điển</option>
+                        <option value="Arial">Arial · Không chân</option>
+                        <option value="Courier Prime">Courier Prime · Máy đánh chữ</option>
+                        <option value="Playfair Display">Playfair Display · Sang trọng</option>
+                        <option value="Dancing Script">Dancing Script · Viết tay</option>
                     </select>
 
                     <select id="font-size" class="tool-select" title="Cỡ chữ">
@@ -136,6 +155,7 @@
                     <div class="tool-group">
                         <button class="tool-btn" id="btn-bullet-list" title="Danh sách dấu chấm"><i class="fa-solid fa-list-ul"></i></button>
                         <button class="tool-btn" id="btn-number-list" title="Danh sách số"><i class="fa-solid fa-list-ol"></i></button>
+                        <button class="tool-btn" id="btn-formula" title="Chèn ký hiệu khoa học"><i class="fa-solid fa-square-root-variable"></i></button>
                     </div>
 
                     <div class="tool-group">
@@ -144,6 +164,11 @@
                             <option value="1.5" selected>Dòng 1.5</option>
                             <option value="2.0">Dòng 2.0</option>
                         </select>
+                    </div>
+
+                    <div class="tool-group">
+                        <button class="tool-btn" id="btn-undo-text" title="Hoàn tác (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
+                        <button class="tool-btn" id="btn-redo-text" title="Làm lại (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i></button>
                     </div>
                 </div>
 
@@ -160,6 +185,7 @@
                         <button class="tool-btn" id="tool-rect" title="Hình chữ nhật"><i class="fa-regular fa-square"></i></button>
                         <button class="tool-btn" id="tool-circle" title="Hình tròn"><i class="fa-regular fa-circle"></i></button>
                         <button class="tool-btn" id="tool-oxy" title="Hệ trục tọa độ Oxy"><i class="fa-solid fa-chart-line"></i></button>
+                        <button class="tool-btn" id="tool-graph" title="Vẽ đồ thị hàm số y=f(x)"><i class="fa-solid fa-wave-square"></i></button>
                     </div>
 
                     <div class="tool-group">
@@ -168,15 +194,20 @@
                             <input type="color" id="canvas-color" value="#0284c7">
                         </label>
                         <select id="canvas-line-width" class="tool-select" title="Độ dày nét">
-                            <option value="2">Mỏng (2px)</option>
-                            <option value="4" selected>Vừa (4px)</option>
-                            <option value="8">Dày (8px)</option>
-                            <option value="16">Rất dày (16px)</option>
+                            <option value="2">Mỏng · 2px</option>
+                            <option value="4" selected>Vừa · 4px</option>
+                            <option value="8">Dày · 8px</option>
+                            <option value="16">Rất dày · 16px</option>
                         </select>
                     </div>
 
                     <div class="tool-group">
-                        <button class="tool-btn danger" id="btn-clear-canvas" title="Xóa toàn bộ hình vẽ"><i class="fa-solid fa-broom"></i> Clear Canvas</button>
+                        <button class="tool-btn" id="btn-undo-canvas" title="Hoàn tác (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
+                        <button class="tool-btn" id="btn-redo-canvas" title="Làm lại (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i></button>
+                    </div>
+
+                    <div class="tool-group">
+                        <button class="tool-btn danger" id="btn-clear-canvas" title="Xóa toàn bộ hình vẽ"><i class="fa-solid fa-broom"></i> <span>Xóa nét vẽ</span></button>
                     </div>
                 </div>
             </div>
@@ -184,23 +215,45 @@
             <!-- Double Layer Canvas & Text Workspace -->
             <div id="workspace-viewport" class="workspace-viewport">
                 <!-- Layer 1: Rich Text Content Editable -->
-                <div id="text-editor" contenteditable="true" spellcheck="false" placeholder="Nhập nội dung ghi chép tại đây..."></div>
-                
+                <div id="text-editor" contenteditable="true" spellcheck="false" placeholder="Nhập nội dung ghi chép tại đây…"></div>
+
                 <!-- Layer 2: HTML5 Canvas Overlay -->
                 <canvas id="note-canvas"></canvas>
+            </div>
+
+            <!-- Status / Telemetry Footer -->
+            <div class="workspace-status">
+                <span class="status-item" id="status-wordcount"><i class="fa-solid fa-input-text"></i> 0 từ</span>
+                <span class="status-item" id="status-autosave"><span class="status-dot" id="autosave-dot"></span><span id="autosave-text">Đã lưu</span></span>
             </div>
         </section>
     </main>
 
-    <!-- FLOATING CASIO CALCULATOR MODAL -->
+    <!-- FLOATING SCIENTIFIC CALCULATOR MODAL -->
     <div id="casio-modal" class="casio-modal hidden">
         <div id="casio-header" class="casio-header">
-            <span class="casio-title"><i class="fa-solid fa-calculator"></i> Casio FX-570 Mini</span>
-            <button id="btn-close-casio" class="casio-close-btn">&times;</button>
+            <span class="casio-title"><i class="fa-solid fa-calculator"></i> Máy tính khoa học</span>
+            <button id="btn-close-casio" class="casio-close-btn" aria-label="Đóng">&times;</button>
         </div>
         <div class="casio-body">
-            <input type="text" id="casio-display" readonly value="0">
+            <div class="casio-memory" id="casio-memory">M: 0</div>
+            <input type="text" id="casio-display" readonly value="0" aria-label="Màn hình kết quả">
             <div class="casio-keypad">
+                <button class="casio-btn function" data-action="mc">MC</button>
+                <button class="casio-btn function" data-action="mr">MR</button>
+                <button class="casio-btn function" data-action="mplus">M+</button>
+                <button class="casio-btn function" data-action="mminus">M−</button>
+
+                <button class="casio-btn function" data-action="sin">sin</button>
+                <button class="casio-btn function" data-action="cos">cos</button>
+                <button class="casio-btn function" data-action="tan">tan</button>
+                <button class="casio-btn function" data-action="log">log</button>
+
+                <button class="casio-btn function" data-action="ln">ln</button>
+                <button class="casio-btn function" data-value="pi">π</button>
+                <button class="casio-btn function" data-value="e">e</button>
+                <button class="casio-btn function" data-action="fact">n!</button>
+
                 <button class="casio-btn function" data-action="clear">AC</button>
                 <button class="casio-btn function" data-action="delete">DEL</button>
                 <button class="casio-btn function" data-value="(">(</button>
@@ -208,7 +261,7 @@
 
                 <button class="casio-btn function" data-action="sqrt">√</button>
                 <button class="casio-btn function" data-action="pow">x²</button>
-                <button class="casio-btn function" data-value="%">%</button>
+                <button class="casio-btn function" data-value="^">xʸ</button>
                 <button class="casio-btn operator" data-value="/">÷</button>
 
                 <button class="casio-btn" data-value="7">7</button>
@@ -219,7 +272,7 @@
                 <button class="casio-btn" data-value="4">4</button>
                 <button class="casio-btn" data-value="5">5</button>
                 <button class="casio-btn" data-value="6">6</button>
-                <button class="casio-btn operator" data-value="-">-</button>
+                <button class="casio-btn operator" data-value="-">−</button>
 
                 <button class="casio-btn" data-value="1">1</button>
                 <button class="casio-btn" data-value="2">2</button>
@@ -228,11 +281,42 @@
 
                 <button class="casio-btn" data-value="0">0</button>
                 <button class="casio-btn" data-value=".">.</button>
-                <button class="casio-btn action-copy" id="btn-copy-casio" title="Copy kết quả chèn vào văn bản"><i class="fa-regular fa-copy"></i> Copy</button>
+                <button class="casio-btn action-copy" id="btn-copy-casio" title="Chèn kết quả vào văn bản"><i class="fa-regular fa-copy"></i></button>
                 <button class="casio-btn equals" data-action="equals">=</button>
             </div>
         </div>
     </div>
+
+    <!-- Function Graph Prompt Modal -->
+    <div id="graph-modal" class="dialog-overlay hidden">
+        <div class="dialog-box">
+            <h3><i class="fa-solid fa-wave-square"></i> Vẽ đồ thị hàm số</h3>
+            <p class="dialog-sub">Nhập hàm số theo biến <code>x</code>, ví dụ: <code>sin(x)</code>, <code>x^2 - 3*x + 2</code></p>
+            <div class="dialog-field">
+                <span>y =</span>
+                <input type="text" id="graph-function-input" placeholder="x^2" autocomplete="off">
+            </div>
+            <div class="dialog-actions">
+                <button class="dialog-btn ghost" id="graph-cancel">Hủy</button>
+                <button class="dialog-btn primary" id="graph-confirm">Vẽ đồ thị</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Reusable Confirm Dialog -->
+    <div id="confirm-modal" class="dialog-overlay hidden">
+        <div class="dialog-box">
+            <h3 id="confirm-title"><i class="fa-solid fa-triangle-exclamation"></i> Xác nhận</h3>
+            <p class="dialog-sub" id="confirm-message"></p>
+            <div class="dialog-actions">
+                <button class="dialog-btn ghost" id="confirm-cancel">Hủy</button>
+                <button class="dialog-btn danger" id="confirm-ok">Đồng ý</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Stack -->
+    <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
 
     <!-- Application Script Files -->
     <script src="editor.js"></script>
