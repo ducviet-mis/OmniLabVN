@@ -1,0 +1,40 @@
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #bae6fd;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #38bdf8;
+}
+
+/* Split.js Gutter styling */
+.gutter {
+  background-color: #bae6fd;
+  background-repeat: no-repeat;
+  background-position: center;
+  border-radius: 9999px;
+  cursor: col-resize;
+  transition: background-color 0.2s ease;
+}
+.gutter:hover {
+  background-color: #38bdf8;
+}
+
+/* Active State for Toolbar Buttons */
+.active-tool {
+  background-color: #38bdf8 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 4px rgba(56, 189, 248, 0.3);
+}
+
+/* Glassmorphism Shadow */
+.shadow-glass {
+  box-shadow: 0 8px 32px 0 rgba(56, 189, 248, 0.2);
+}
