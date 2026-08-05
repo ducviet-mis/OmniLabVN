@@ -1,6 +1,7 @@
 /**
  * OMNILAB - MAIN APPLICATION CONTROLLER
- * Integrates PDF.js, Resizer, Casio Calculator, Mode Switcher, and LocalStorage.
+ * Integrates PDF.js, Resizer, Scientific Calculator, Mode Switcher,
+ * Theme toggle, Autosave, Toast/Confirm UI, and LocalStorage persistence.
  */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -9,7 +10,77 @@ document.addEventListener('DOMContentLoaded', () => {
     pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js';
 
     // ----------------------------------------------------------------------
-    // 1. STATE VARIABLES
+    // 0. TOAST & CONFIRM UI HELPERS
+    // ----------------------------------------------------------------------
+    const toastStack = document.getElementById('toast-stack');
+
+    const showToast = (message, type = 'info', icon = 'fa-circle-check') => {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
+        toastStack.appendChild(toast);
+        setTimeout(() => {
+            toast.classList.add('fade-out');
+            setTimeout(() => toast.remove(), 220);
+        }, 2600);
+    };
+    window.showToast = showToast;
+
+    const confirmModal = document.getElementById('confirm-modal');
+    const confirmTitle = document.getElementById('confirm-title');
+    const confirmMessage = document.getElementById('confirm-message');
+    const confirmOk = document.getElementById('confirm-ok');
+    const confirmCancel = document.getElementById('confirm-cancel');
+
+    const showConfirm = (message, title = 'Xác nhận thao tác') => {
+        return new Promise((resolve) => {
+            confirmTitle.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${title}`;
+            confirmMessage.textContent = message;
+            confirmModal.classList.remove('hidden');
+
+            const cleanup = (result) => {
+                confirmModal.classList.add('hidden');
+                confirmOk.removeEventListener('click', onOk);
+                confirmCancel.removeEventListener('click', onCancel);
+                resolve(result);
+            };
+            const onOk = () => cleanup(true);
+            const onCancel = () => cleanup(false);
+
+            confirmOk.addEventListener('click', onOk);
+            confirmCancel.addEventListener('click', onCancel);
+        });
+    };
+    window.showConfirm = showConfirm;
+
+    // ----------------------------------------------------------------------
+    // 1. THEME TOGGLE (Light / Dark)
+    // ----------------------------------------------------------------------
+    const btnToggleTheme = document.getElementById('btn-toggle-theme');
+    const themeIcon = btnToggleTheme.querySelector('i');
+
+    const applyTheme = (theme) => {
+        if (theme === 'dark') {
+            document.documentElement.setAttribute('data-theme', 'dark');
+            themeIcon.className = 'fa-solid fa-sun';
+        } else {
+            document.documentElement.removeAttribute('data-theme');
+            themeIcon.className = 'fa-solid fa-moon';
+        }
+    };
+
+    const savedTheme = localStorage.getItem('omnilab_theme') || 'light';
+    applyTheme(savedTheme);
+
+    btnToggleTheme.addEventListener('click', () => {
+        const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        const next = isDark ? 'light' : 'dark';
+        applyTheme(next);
+        localStorage.setItem('omnilab_theme', next);
+    });
+
+    // ----------------------------------------------------------------------
+    // 2. STATE VARIABLES
     // ----------------------------------------------------------------------
     let pdfDoc = null;
     let pageNum = 1;
@@ -20,33 +91,33 @@ document.addEventListener('DOMContentLoaded', () => {
     const pdfCanvas = document.getElementById('pdf-canvas');
     const pdfCtx = pdfCanvas.getContext('2d');
     const pdfPlaceholder = document.getElementById('pdf-placeholder');
+    const pdfLoading = document.getElementById('pdf-loading');
+    const pdfDocName = document.getElementById('pdf-doc-name');
 
     // ----------------------------------------------------------------------
-    // 2. MODE SWITCHER (Text <-> Canvas)
+    // 3. MODE SWITCHER (Text <-> Canvas)
     // ----------------------------------------------------------------------
     const btnModeText = document.getElementById('btn-mode-text');
     const btnModeCanvas = document.getElementById('btn-mode-canvas');
     const editorToolbar = document.getElementById('editor-toolbar');
     const canvasToolbar = document.getElementById('canvas-toolbar');
 
-    btnModeText.addEventListener('click', () => {
-        btnModeText.classList.add('active');
-        btnModeCanvas.classList.remove('active');
-        document.body.classList.remove('mode-canvas');
-        editorToolbar.classList.add('active');
-        canvasToolbar.classList.remove('active');
-    });
+    const setMode = (mode) => {
+        const isCanvas = mode === 'canvas';
+        btnModeText.classList.toggle('active', !isCanvas);
+        btnModeText.setAttribute('aria-selected', String(!isCanvas));
+        btnModeCanvas.classList.toggle('active', isCanvas);
+        btnModeCanvas.setAttribute('aria-selected', String(isCanvas));
+        document.body.classList.toggle('mode-canvas', isCanvas);
+        editorToolbar.classList.toggle('active', !isCanvas);
+        canvasToolbar.classList.toggle('active', isCanvas);
+    };
 
-    btnModeCanvas.addEventListener('click', () => {
-        btnModeCanvas.classList.add('active');
-        btnModeText.classList.remove('active');
-        document.body.classList.add('mode-canvas');
-        canvasToolbar.classList.add('active');
-        editorToolbar.classList.remove('active');
-    });
+    btnModeText.addEventListener('click', () => setMode('text'));
+    btnModeCanvas.addEventListener('click', () => setMode('canvas'));
 
     // ----------------------------------------------------------------------
-    // 3. SPLIT SCREEN RESIZER
+    // 4. SPLIT SCREEN RESIZER
     // ----------------------------------------------------------------------
     const resizer = document.getElementById('resizer');
     const pdfPane = document.getElementById('pdf-container');
@@ -75,7 +146,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // ----------------------------------------------------------------------
-    // 4. PDF RENDERING ENGINE
+    // 5. PDF RENDERING ENGINE
     // ----------------------------------------------------------------------
     const renderPage = (num) => {
         pageRendering = true;
@@ -112,21 +183,34 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.getElementById('pdf-upload').addEventListener('change', (e) => {
         const file = e.target.files[0];
-        if (file && file.type === 'application/pdf') {
-            const fileReader = new FileReader();
-            fileReader.onload = function () {
-                const typedarray = new Uint8Array(this.result);
-                pdfjsLib.getDocument(typedarray).promise.then((pdf) => {
-                    pdfDoc = pdf;
-                    document.getElementById('pdf-page-count').textContent = pdf.numPages;
-                    pdfPlaceholder.style.display = 'none';
-                    pdfCanvas.style.display = 'block';
-                    pageNum = 1;
-                    renderPage(pageNum);
-                });
-            };
-            fileReader.readAsArrayBuffer(file);
+        if (!file) return;
+        if (file.type !== 'application/pdf') {
+            showToast('Vui lòng chọn một tệp định dạng PDF.', 'error', 'fa-circle-exclamation');
+            return;
         }
+
+        pdfLoading.classList.remove('hidden');
+        pdfPlaceholder.style.display = 'none';
+
+        const fileReader = new FileReader();
+        fileReader.onload = function () {
+            const typedarray = new Uint8Array(this.result);
+            pdfjsLib.getDocument(typedarray).promise.then((pdf) => {
+                pdfDoc = pdf;
+                document.getElementById('pdf-page-count').textContent = pdf.numPages;
+                pdfLoading.classList.add('hidden');
+                pdfCanvas.style.display = 'block';
+                pdfDocName.textContent = file.name;
+                pageNum = 1;
+                renderPage(pageNum);
+                showToast(`Đã nạp tài liệu · ${pdf.numPages} trang`, 'info', 'fa-file-pdf');
+            }).catch(() => {
+                pdfLoading.classList.add('hidden');
+                pdfPlaceholder.style.display = 'flex';
+                showToast('Không thể đọc tệp PDF này.', 'error', 'fa-circle-exclamation');
+            });
+        };
+        fileReader.readAsArrayBuffer(file);
     });
 
     document.getElementById('pdf-prev').addEventListener('click', () => {
@@ -142,7 +226,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('pdf-zoom-in').addEventListener('click', () => {
-        if (!pdfDoc) return;
+        if (!pdfDoc || scale >= 3) return;
         scale += 0.2;
         document.getElementById('pdf-zoom-level').textContent = `${Math.round(scale * 100)}%`;
         queueRenderPage(pageNum);
@@ -155,11 +239,20 @@ document.addEventListener('DOMContentLoaded', () => {
         queueRenderPage(pageNum);
     });
 
+    // Keyboard navigation for PDF (only when not typing in the editor)
+    document.addEventListener('keydown', (e) => {
+        const isTyping = document.activeElement && document.activeElement.id === 'text-editor';
+        if (isTyping || !pdfDoc) return;
+        if (e.key === 'ArrowLeft') document.getElementById('pdf-prev').click();
+        if (e.key === 'ArrowRight') document.getElementById('pdf-next').click();
+    });
+
     // ----------------------------------------------------------------------
-    // 5. CASIO CALCULATOR & DRAGGABLE MODAL
+    // 6. SCIENTIFIC CALCULATOR (safe expression parser — no eval)
     // ----------------------------------------------------------------------
     const casioModal = document.getElementById('casio-modal');
     const casioDisplay = document.getElementById('casio-display');
+    const casioMemoryLabel = document.getElementById('casio-memory');
     const btnToggleCasio = document.getElementById('btn-toggle-casio');
     const btnCloseCasio = document.getElementById('btn-close-casio');
     const casioHeader = document.getElementById('casio-header');
@@ -172,91 +265,344 @@ document.addEventListener('DOMContentLoaded', () => {
         casioModal.classList.add('hidden');
     });
 
-    // Make Casio Modal Draggable
+    // Make Casio Modal Draggable (mouse + touch)
     let isDraggingCasio = false;
     let casioOffsetX = 0, casioOffsetY = 0;
 
-    casioHeader.addEventListener('mousedown', (e) => {
+    const startDragCasio = (clientX, clientY) => {
         isDraggingCasio = true;
-        casioOffsetX = e.clientX - casioModal.offsetLeft;
-        casioOffsetY = e.clientY - casioModal.offsetTop;
-    });
+        casioOffsetX = clientX - casioModal.offsetLeft;
+        casioOffsetY = clientY - casioModal.offsetTop;
+    };
+    const moveDragCasio = (clientX, clientY) => {
+        if (!isDraggingCasio) return;
+        casioModal.style.left = `${clientX - casioOffsetX}px`;
+        casioModal.style.top = `${clientY - casioOffsetY}px`;
+        casioModal.style.right = 'auto';
+    };
 
-    document.addEventListener('mousemove', (e) => {
-        if (isDraggingCasio) {
-            casioModal.style.left = `${e.clientX - casioOffsetX}px`;
-            casioModal.style.top = `${e.clientY - casioOffsetY}px`;
-            casioModal.style.right = 'auto';
-        }
-    });
-
+    casioHeader.addEventListener('mousedown', (e) => startDragCasio(e.clientX, e.clientY));
+    document.addEventListener('mousemove', (e) => moveDragCasio(e.clientX, e.clientY));
     document.addEventListener('mouseup', () => isDraggingCasio = false);
 
-    // Casio Calculation Execution
+    casioHeader.addEventListener('touchstart', (e) => {
+        const t = e.touches[0];
+        startDragCasio(t.clientX, t.clientY);
+    }, { passive: true });
+    document.addEventListener('touchmove', (e) => {
+        if (!isDraggingCasio) return;
+        const t = e.touches[0];
+        moveDragCasio(t.clientX, t.clientY);
+    }, { passive: true });
+    document.addEventListener('touchend', () => isDraggingCasio = false);
+
+    /**
+     * Tiny recursive-descent parser/evaluator for arithmetic expressions.
+     * Supports: + - * / ^ () unary minus, sin cos tan log ln sqrt, pi, e, n!, %
+     * Deliberately avoids eval()/Function() on user input.
+     */
+    class ExpressionError extends Error {}
+
+    function evaluateExpression(input) {
+        const src = input.replace(/pi/g, 'π').trim();
+        let pos = 0;
+
+        const peek = () => src[pos];
+        const isDigit = (c) => c >= '0' && c <= '9';
+        const isAlpha = (c) => /[a-zA-Zπ]/.test(c || '');
+
+        function skipSpace() { while (peek() === ' ') pos++; }
+
+        function parseExpression() {
+            let value = parseTerm();
+            skipSpace();
+            while (peek() === '+' || peek() === '-') {
+                const op = src[pos++];
+                const rhs = parseTerm();
+                value = op === '+' ? value + rhs : value - rhs;
+                skipSpace();
+            }
+            return value;
+        }
+
+        function parseTerm() {
+            let value = parseFactor();
+            skipSpace();
+            while (peek() === '*' || peek() === '/' || peek() === '%') {
+                const op = src[pos++];
+                const rhs = parseFactor();
+                if (op === '*') value = value * rhs;
+                else if (op === '/') {
+                    if (rhs === 0) throw new ExpressionError('Chia cho 0');
+                    value = value / rhs;
+                } else value = value % rhs;
+                skipSpace();
+            }
+            return value;
+        }
+
+        function parseFactor() {
+            let value = parseUnary();
+            skipSpace();
+            while (peek() === '^') {
+                pos++;
+                const rhs = parseUnary();
+                value = Math.pow(value, rhs);
+                skipSpace();
+            }
+            return value;
+        }
+
+        function parseUnary() {
+            skipSpace();
+            if (peek() === '-') { pos++; return -parseUnary(); }
+            if (peek() === '+') { pos++; return parseUnary(); }
+            return parsePostfix();
+        }
+
+        function parsePostfix() {
+            let value = parsePrimary();
+            skipSpace();
+            while (peek() === '!') {
+                pos++;
+                value = factorial(value);
+                skipSpace();
+            }
+            return value;
+        }
+
+        function factorial(n) {
+            if (n < 0 || !Number.isInteger(n)) throw new ExpressionError('n! không hợp lệ');
+            let result = 1;
+            for (let i = 2; i <= n; i++) result *= i;
+            return result;
+        }
+
+        function parsePrimary() {
+            skipSpace();
+            const c = peek();
+
+            if (c === '(') {
+                pos++;
+                const value = parseExpression();
+                skipSpace();
+                if (peek() !== ')') throw new ExpressionError('Thiếu dấu )');
+                pos++;
+                return value;
+            }
+
+            if (c === 'π') { pos++; return Math.PI; }
+
+            if (isAlpha(c)) {
+                let name = '';
+                while (isAlpha(peek())) name += src[pos++];
+                skipSpace();
+                if (name === 'e') return Math.E;
+                if (peek() !== '(') throw new ExpressionError(`Thiếu ( sau ${name}`);
+                pos++;
+                const arg = parseExpression();
+                skipSpace();
+                if (peek() !== ')') throw new ExpressionError('Thiếu dấu )');
+                pos++;
+                switch (name) {
+                    case 'sin': return Math.sin(arg * Math.PI / 180);
+                    case 'cos': return Math.cos(arg * Math.PI / 180);
+                    case 'tan': return Math.tan(arg * Math.PI / 180);
+                    case 'log': return Math.log10(arg);
+                    case 'ln': return Math.log(arg);
+                    case 'sqrt': return Math.sqrt(arg);
+                    default: throw new ExpressionError(`Không rõ hàm ${name}`);
+                }
+            }
+
+            if (isDigit(c) || c === '.') {
+                let numStr = '';
+                while (isDigit(peek()) || peek() === '.') numStr += src[pos++];
+                return parseFloat(numStr);
+            }
+
+            throw new ExpressionError('Biểu thức không hợp lệ');
+        }
+
+        if (!src) return 0;
+        const result = parseExpression();
+        skipSpace();
+        if (pos < src.length) throw new ExpressionError('Biểu thức không hợp lệ');
+        if (!Number.isFinite(result)) throw new ExpressionError('Kết quả không xác định');
+        return result;
+    }
+    window.evaluateExpression = evaluateExpression;
+
     let expression = '';
+    let memory = 0;
+
+    const refreshMemoryLabel = () => {
+        casioMemoryLabel.textContent = `M: ${roundDisplay(memory)}`;
+    };
+    const roundDisplay = (n) => {
+        if (typeof n !== 'number') return n;
+        return Math.round(n * 1e10) / 1e10;
+    };
 
     document.querySelectorAll('.casio-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const val = btn.dataset.value;
             const action = btn.dataset.action;
 
-            if (val) {
-                expression += val;
+            const wrapFunc = (fnName) => {
+                expression += `${fnName}(`;
                 casioDisplay.value = expression;
-            } else if (action === 'clear') {
-                expression = '';
-                casioDisplay.value = '0';
-            } else if (action === 'delete') {
-                expression = expression.slice(0, -1);
-                casioDisplay.value = expression || '0';
-            } else if (action === 'sqrt') {
-                try {
-                    expression = Math.sqrt(eval(expression)).toString();
-                    casioDisplay.value = expression;
-                } catch {
-                    casioDisplay.value = 'Error';
-                }
-            } else if (action === 'pow') {
-                try {
-                    expression = Math.pow(eval(expression), 2).toString();
-                    casioDisplay.value = expression;
-                } catch {
-                    casioDisplay.value = 'Error';
-                }
-            } else if (action === 'equals') {
-                try {
-                    expression = eval(expression).toString();
-                    casioDisplay.value = expression;
-                } catch {
-                    casioDisplay.value = 'Error';
-                    expression = '';
-                }
+            };
+
+            if (val === 'pi') { expression += 'pi'; casioDisplay.value = expression; return; }
+            if (val) { expression += val; casioDisplay.value = expression; return; }
+
+            switch (action) {
+                case 'clear': expression = ''; casioDisplay.value = '0'; break;
+                case 'delete': expression = expression.slice(0, -1); casioDisplay.value = expression || '0'; break;
+                case 'sin': wrapFunc('sin'); break;
+                case 'cos': wrapFunc('cos'); break;
+                case 'tan': wrapFunc('tan'); break;
+                case 'log': wrapFunc('log'); break;
+                case 'ln': wrapFunc('ln'); break;
+                case 'sqrt': wrapFunc('sqrt'); break;
+                case 'fact': expression += '!'; casioDisplay.value = expression; break;
+                case 'pow':
+                    try {
+                        const r = evaluateExpression(expression);
+                        expression = roundDisplay(Math.pow(r, 2)).toString();
+                        casioDisplay.value = expression;
+                    } catch { casioDisplay.value = 'Lỗi'; expression = ''; }
+                    break;
+                case 'mc': memory = 0; refreshMemoryLabel(); break;
+                case 'mr': expression += roundDisplay(memory).toString(); casioDisplay.value = expression; break;
+                case 'mplus':
+                    try { memory += evaluateExpression(expression || casioDisplay.value); refreshMemoryLabel(); }
+                    catch { showToast('Không thể cộng vào bộ nhớ.', 'error', 'fa-circle-exclamation'); }
+                    break;
+                case 'mminus':
+                    try { memory -= evaluateExpression(expression || casioDisplay.value); refreshMemoryLabel(); }
+                    catch { showToast('Không thể trừ vào bộ nhớ.', 'error', 'fa-circle-exclamation'); }
+                    break;
+                case 'equals':
+                    try {
+                        const result = evaluateExpression(expression);
+                        expression = roundDisplay(result).toString();
+                        casioDisplay.value = expression;
+                    } catch (err) {
+                        casioDisplay.value = err instanceof ExpressionError ? err.message : 'Lỗi';
+                        expression = '';
+                    }
+                    break;
             }
         });
     });
 
+    // Keyboard input support while calculator is open
+    casioDisplay.addEventListener('keydown', (e) => e.preventDefault());
+
     // Copy Result to Rich Text Editor
     document.getElementById('btn-copy-casio').addEventListener('click', () => {
         const val = casioDisplay.value;
-        if (val && val !== 'Error') {
+        if (val && val !== 'Lỗi') {
             window.richTextEditor.insertTextAtCursor(` ${val} `);
+            showToast('Đã chèn kết quả vào ghi chú.', 'info', 'fa-square-root-variable');
         }
     });
 
     // ----------------------------------------------------------------------
-    // 6. LOCAL STORAGE PERSISTENCE & CLEARING
+    // 7. FUNCTION GRAPH DIALOG (y = f(x)) — delegates plotting to CanvasEngine
+    // ----------------------------------------------------------------------
+    const graphModal = document.getElementById('graph-modal');
+    const graphInput = document.getElementById('graph-function-input');
+    const graphCancel = document.getElementById('graph-cancel');
+    const graphConfirm = document.getElementById('graph-confirm');
+
+    const openGraphDialog = () => {
+        graphModal.classList.remove('hidden');
+        graphInput.value = '';
+        setTimeout(() => graphInput.focus(), 50);
+    };
+    const closeGraphDialog = () => graphModal.classList.add('hidden');
+
+    document.getElementById('tool-graph').addEventListener('click', () => {
+        // Keep tool-graph visually selectable alongside other canvas tools
+        document.querySelectorAll('#canvas-toolbar .tool-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById('tool-graph').classList.add('active');
+        openGraphDialog();
+    });
+
+    graphCancel.addEventListener('click', closeGraphDialog);
+    graphModal.addEventListener('click', (e) => { if (e.target === graphModal) closeGraphDialog(); });
+
+    const submitGraph = () => {
+        const fn = graphInput.value.trim();
+        if (!fn) { showToast('Vui lòng nhập một hàm số.', 'error', 'fa-circle-exclamation'); return; }
+        try {
+            window.canvasEngine.plotFunction(fn, evaluateExpression);
+            closeGraphDialog();
+            showToast(`Đã vẽ đồ thị y = ${fn}`, 'info', 'fa-wave-square');
+        } catch (err) {
+            showToast('Hàm số không hợp lệ, vui lòng kiểm tra lại.', 'error', 'fa-circle-exclamation');
+        }
+    };
+    graphConfirm.addEventListener('click', submitGraph);
+    graphInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') submitGraph(); });
+
+    // ----------------------------------------------------------------------
+    // 8. WORD COUNT
+    // ----------------------------------------------------------------------
+    const statusWordCount = document.getElementById('status-wordcount');
+    const updateWordCount = () => {
+        const text = window.richTextEditor.getPlainText().trim();
+        const words = text ? text.split(/\s+/).length : 0;
+        statusWordCount.innerHTML = `<i class="fa-solid fa-input-text"></i> ${words} từ`;
+    };
+    document.getElementById('text-editor').addEventListener('input', updateWordCount);
+
+    // ----------------------------------------------------------------------
+    // 9. LOCAL STORAGE PERSISTENCE, CLEARING & AUTOSAVE
     // ----------------------------------------------------------------------
     const btnSave = document.getElementById('btn-save');
     const btnClearAll = document.getElementById('btn-clear-all');
+    const autosaveDot = document.getElementById('autosave-dot');
+    const autosaveText = document.getElementById('autosave-text');
 
-    const saveData = () => {
+    const persist = () => {
         const textContent = window.richTextEditor.getContent();
         const canvasData = window.canvasEngine.getCanvasData();
-
         localStorage.setItem('omnilab_text', textContent);
         localStorage.setItem('omnilab_canvas', canvasData);
+    };
 
-        alert('Bài học đã được lưu thành công vào trình duyệt!');
+    const markUnsaved = () => {
+        autosaveDot.classList.add('unsaved');
+        autosaveText.textContent = 'Đang chỉnh sửa…';
+    };
+
+    const markSaved = () => {
+        autosaveDot.classList.remove('unsaved');
+        autosaveText.textContent = 'Đã lưu';
+    };
+
+    let autosaveTimer = null;
+    const scheduleAutosave = () => {
+        markUnsaved();
+        clearTimeout(autosaveTimer);
+        autosaveTimer = setTimeout(() => {
+            persist();
+            markSaved();
+        }, 1200);
+    };
+    window.scheduleAutosave = scheduleAutosave;
+
+    document.getElementById('text-editor').addEventListener('input', scheduleAutosave);
+
+    const saveData = () => {
+        clearTimeout(autosaveTimer);
+        persist();
+        markSaved();
+        showToast('Bài học đã được lưu vào trình duyệt.', 'info', 'fa-floppy-disk');
     };
 
     const loadData = () => {
@@ -265,18 +611,45 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (savedText) window.richTextEditor.setContent(savedText);
         if (savedCanvas) window.canvasEngine.loadCanvasData(savedCanvas);
+        updateWordCount();
     };
 
-    btnClearAll.addEventListener('click', () => {
-        if (confirm('Bạn có chắc chắn muốn xóa toàn bộ chữ viết và hình vẽ không?')) {
-            window.richTextEditor.clear();
-            window.canvasEngine.clearCanvas();
-            localStorage.removeItem('omnilab_text');
-            localStorage.removeItem('omnilab_canvas');
-        }
+    btnClearAll.addEventListener('click', async () => {
+        const ok = await showConfirm('Toàn bộ chữ viết và hình vẽ trong bài sẽ bị xóa vĩnh viễn. Bạn có chắc chắn?', 'Xóa toàn bộ dữ liệu');
+        if (!ok) return;
+        window.richTextEditor.clear();
+        window.canvasEngine.clearCanvas(true);
+        localStorage.removeItem('omnilab_text');
+        localStorage.removeItem('omnilab_canvas');
+        updateWordCount();
+        markSaved();
+        showToast('Đã xóa toàn bộ dữ liệu bài học.', 'info', 'fa-trash-can');
     });
 
     btnSave.addEventListener('click', saveData);
+
+    // Global keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        const ctrl = e.ctrlKey || e.metaKey;
+        if (ctrl && e.key.toLowerCase() === 's') {
+            e.preventDefault();
+            saveData();
+        }
+        if (e.altKey && e.key === '1') { e.preventDefault(); setMode('text'); }
+        if (e.altKey && e.key === '2') { e.preventDefault(); setMode('canvas'); }
+        if (e.key === 'Escape') {
+            if (!graphModal.classList.contains('hidden')) closeGraphDialog();
+            if (!casioModal.classList.contains('hidden')) casioModal.classList.add('hidden');
+        }
+    });
+
+    // Warn before leaving with unsaved changes
+    window.addEventListener('beforeunload', (e) => {
+        if (autosaveDot.classList.contains('unsaved')) {
+            e.preventDefault();
+            e.returnValue = '';
+        }
+    });
 
     // Initial Load
     loadData();
