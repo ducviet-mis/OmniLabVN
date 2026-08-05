@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StudyStation Pro</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <!-- Split.js (Thanh kéo rê chia màn hình) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/split.js/1.6.5/split.min.js"></script>
+  
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            studyBg: '#F0F9FF',
+            studyAccent: '#38BDF8',
+            studyAccentDark: '#0284c7',
+            studyCard: '#FFFFFF',
+            studyBorder: '#BAE6FD',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Style cho thanh ranh giới kéo rê (Gutter) */
+    .gutter {
+      background-color: #BAE6FD;
+      background-repeat: no-repeat;
+      background-position: center;
+      cursor: col-resize;
+      transition: background-color 0.2s;
+    }
+    .gutter:hover { background-color: #38BDF8; }
+  </style>
+</head>
+<body class="bg-studyBg h-screen w-screen overflow-hidden flex flex-col font-sans">
+
+  <!-- HEADER / TOOLBAR TRÊN CÙNG -->
+  <header class="h-14 bg-white border-b border-studyBorder flex items-center justify-between px-6 z-10">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-full bg-studyAccent flex items-center justify-center text-white font-bold">S</div>
+      <h1 class="text-lg font-bold text-slate-700">StudyStation <span class="text-studyAccentDark">Pro</span></h1>
+    </div>
+    <div class="flex gap-2">
+      <button class="px-4 py-1.5 rounded-full bg-studyBg text-studyAccentDark font-medium text-sm hover:bg-studyBorder transition">
+        <i class="fa-solid fa-folder-open mr-1"></i> Mở file
+      </button>
+      <button class="px-4 py-1.5 rounded-full bg-studyAccentDark text-white font-medium text-sm hover:opacity-90 shadow-sm transition">
+        <i class="fa-solid fa-download mr-1"></i> Xuất PDF
+      </button>
+    </div>
+  </header>
+
+  <!-- BỐ CỤC CHÍNH CHIA ĐÔI MÀN HÌNH -->
+  <main class="flex-1 flex overflow-hidden p-3 gap-1">
+    
+    <!-- BÊN TRÁI: DOCUMENT VIEWER (PDF/DOCX) -->
+    <div id="left-pane" class="bg-studyCard rounded-2xl border border-studyBorder shadow-sm flex flex-col overflow-hidden">
+      <div class="p-3 border-b border-studyBorder bg-slate-50 flex justify-between items-center text-xs text-slate-500">
+        <span><i class="fa-regular fa-file-pdf text-red-500 mr-1"></i> Tai_lieu_hoc_tap.pdf</span>
+        <span>Trang 1 / 12</span>
+      </div>
+      <div class="flex-1 flex items-center justify-center text-slate-400 bg-slate-100/50">
+        <p><i class="fa-solid fa-cloud-arrow-up text-3xl mb-2 block text-center"></i>Kéo thả file PDF vào đây</p>
+      </div>
+    </div>
+
+    <!-- BÊN PHẢI: INTERACTIVE CANVAS / NOTE -->
+    <div id="right-pane" class="bg-studyCard rounded-2xl border border-studyBorder shadow-sm relative flex flex-col overflow-hidden">
+      <div class="p-3 border-b border-studyBorder bg-slate-50 flex justify-between items-center text-xs text-slate-500">
+        <span><i class="fa-solid fa-pen-to-square text-studyAccentDark mr-1"></i> Ghi chú & Luyện tập</span>
+        <span class="bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full text-[10px]">Đã tự động lưu</span>
+      </div>
+      
+      <!-- Vùng Canvas ghi chép -->
+      <div class="flex-1 bg-white relative">
+        <!-- Lưới chấm bi (Dot grid) làm nền -->
+        <div class="absolute inset-0 bg-[radial-gradient(#e5e7eb_1px,transparent_1px)] [background-size:16px_16px]"></div>
+      </div>
+
+      <!-- THANH CÔNG CỤ NỔI (FLOATING TOOLBAR) - Thiết kế Pill/Circle Glassmorphism -->
+      <div class="absolute bottom-6 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-md border border-studyBorder p-1.5 rounded-full shadow-lg flex items-center gap-1 z-20">
+        <button title="Con trỏ" class="w-10 h-10 rounded-full flex items-center justify-center text-slate-600 hover:bg-studyBg transition">
+          <i class="fa-solid fa-arrow-pointer"></i>
+        </button>
+        <button title="Bút vẽ" class="w-10 h-10 rounded-full flex items-center justify-center bg-studyAccent text-white shadow-sm">
+          <i class="fa-solid fa-pen"></i>
+        </button>
+        <button title="Bút nhớ" class="w-10 h-10 rounded-full flex items-center justify-center text-slate-600 hover:bg-studyBg transition">
+          <i class="fa-solid fa-highlighter"></i>
+        </button>
+        <button title="Tẩy" class="w-10 h-10 rounded-full flex items-center justify-center text-slate-600 hover:bg-studyBg transition">
+          <i class="fa-solid fa-eraser"></i>
+        </button>
+        <div class="w-px h-6 bg-studyBorder mx-1"></div>
+        <button title="Soạn văn bản" class="w-10 h-10 rounded-full flex items-center justify-center text-slate-600 hover:bg-studyBg transition">
+          <i class="fa-solid fa-font"></i>
+        </button>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- KÍCH HOẠT CHỨC NĂNG KÉO RÊ CHIA MÀN HÌNH -->
+  <script>
+    Split(['#left-pane', '#right-pane'], {
+      sizes: [50, 50],
+      minSize: 200,
+      gutterSize: 8,
+      cursor: 'col-resize'
+    });
+  </script>
+</body>
+</html>
