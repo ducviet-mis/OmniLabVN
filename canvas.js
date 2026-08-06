@@ -1,34 +1,18 @@
 /**
- * OMNILAB - DRAWING ENGINE
- * A reusable drawing engine driving both:
- *   - the note canvas (freeform notes, shapes, Oxy axes, function graphs)
- *   - the PDF annotation canvas (write / highlight straight onto a PDF page)
- *
- * Each instance is bound to a "Pen Dock": a floating round button that
- * expands into a small toolbar (tool, color, width, undo/redo, clear) when
- * clicked, and collapses back to just the round button when writing is
- * done. While collapsed, the canvas passes pointer events straight through
- * (e.g. to the text editor underneath). While expanded, the canvas becomes
- * interactive and a small custom cursor dot previews the stroke instead of
- * the browser's oversized native crosshair.
- *
- * Strokes are smoothed with quadratic curves between point midpoints, and
- * pressure from a stylus (Pointer Events) scales the line width, which
- * together make freehand writing noticeably steadier than a raw lineTo
- * polyline.
+ * OMNILAB - DRAWING ENGINE (UPDATED WITH EXPANDED SHAPES & GEOMETRY)
  */
 
 class DrawEngine {
     constructor(opts) {
         this.canvas = opts.canvas;
         this.ctx = this.canvas.getContext('2d');
-        this.viewport = opts.viewport || null;     // element to size the canvas against (auto-resize mode)
+        this.viewport = opts.viewport || null;
         this.autoResize = !!opts.autoResize;
         this.dockEl = opts.dockEl;
         this.onStrokeEnd = opts.onStrokeEnd || (() => { if (window.scheduleAutosave) window.scheduleAutosave(); });
 
         this.isDrawing = false;
-        this.currentTool = 'pen'; // pen, highlighter, eraser, line, rect, circle, oxy
+        this.currentTool = 'pen';
         this.points = [];
         this.startX = 0;
         this.startY = 0;
@@ -54,7 +38,6 @@ class DrawEngine {
         this.updateHistoryButtons();
     }
 
-    // --- Wiring -----------------------------------------------------------
     initControls() {
         this.fab = this.dockEl.querySelector('.pen-fab');
         this.popover = this.dockEl.querySelector('.pen-popover');
@@ -87,17 +70,15 @@ class DrawEngine {
         try {
             return this.ctx.getImageData(0, 0, this.canvas.width, this.canvas.height);
         } catch {
-            return null; // toDataURL/getImageData can throw on tainted canvases
+            return null;
         }
     }
 
-    /** Used by the PDF page renderer: resizes the overlay to match the page. */
     resizeTo(width, height) {
         this.canvas.width = width;
         this.canvas.height = height;
     }
 
-    // --- Pen Dock open / collapse -----------------------------------------
     initDockEvents() {
         this.fab.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -132,7 +113,6 @@ class DrawEngine {
         if (!open) this.cursorDot.style.display = 'none';
     }
 
-    // --- Tool / color / width selection ------------------------------------
     initToolEvents() {
         this.toolButtons.forEach((btn) => {
             btn.addEventListener('click', () => {
@@ -163,7 +143,6 @@ class DrawEngine {
         if (this.redoBtn) this.redoBtn.addEventListener('click', () => this.redo());
     }
 
-    // --- Pointer-based drawing (mouse, touch, stylus — with pressure) -----
     initDrawEvents() {
         this.canvas.addEventListener('pointerdown', (e) => {
             if (!this.isOpen()) return;
@@ -212,7 +191,7 @@ class DrawEngine {
             bg = 'rgba(148, 163, 184, 0.15)';
             border = 'var(--text-muted)';
         } else if (this.currentTool !== 'pen') {
-            size = 10; // shape tools: small crosshair-style dot
+            size = 10;
         }
 
         size = Math.max(size, 6);
@@ -230,11 +209,9 @@ class DrawEngine {
         this.startX = pos.x;
         this.startY = pos.y;
 
-        // Save undo checkpoint BEFORE mutating the canvas
         this.snapshot = this.safeGetImage();
         this.pushHistory();
 
-        // Draw an immediate dot so a simple tap/click still leaves a mark
         this.applyStrokeStyle(pos);
         this.ctx.beginPath();
         this.ctx.moveTo(pos.x, pos.y);
@@ -274,7 +251,6 @@ class DrawEngine {
         }
     }
 
-    /** Quadratic-curve smoothing through point midpoints — steadier than raw lineTo. */
     drawSmoothFreehand(pos) {
         this.points.push(pos);
         const len = this.points.length;
@@ -306,24 +282,135 @@ class DrawEngine {
         this.ctx.strokeStyle = this.currentColor;
         this.ctx.lineWidth = this.currentLineWidth;
         this.ctx.lineCap = 'round';
+        this.ctx.lineJoin = 'round';
 
         this.ctx.beginPath();
 
-        if (this.currentTool === 'line') {
-            this.ctx.moveTo(this.startX, this.startY);
-            this.ctx.lineTo(pos.x, pos.y);
-            this.ctx.stroke();
-        } else if (this.currentTool === 'rect') {
-            const width = pos.x - this.startX;
-            const height = pos.y - this.startY;
-            this.ctx.strokeRect(this.startX, this.startY, width, height);
-        } else if (this.currentTool === 'circle') {
-            const radius = Math.sqrt(Math.pow(pos.x - this.startX, 2) + Math.pow(pos.y - this.startY, 2));
-            this.ctx.arc(this.startX, this.startY, radius, 0, 2 * Math.PI);
-            this.ctx.stroke();
-        } else if (this.currentTool === 'oxy') {
-            this.drawOxyCoordinates(pos);
+        const x = this.startX;
+        const y = this.startY;
+        const w = pos.x - this.startX;
+        const h = pos.y - this.startY;
+
+        switch (this.currentTool) {
+            case 'line':
+                this.ctx.moveTo(x, y);
+                this.ctx.lineTo(pos.x, pos.y);
+                this.ctx.stroke();
+                break;
+
+            case 'arrow':
+                this.drawArrow(x, y, pos.x, pos.y);
+                break;
+
+            case 'rect':
+                this.ctx.strokeRect(x, y, w, h);
+                break;
+
+            case 'circle':
+                const radius = Math.sqrt(w * w + h * h);
+                this.ctx.arc(x, y, radius, 0, 2 * Math.PI);
+                this.ctx.stroke();
+                break;
+
+            case 'ellipse':
+                this.ctx.ellipse(x + w / 2, y + h / 2, Math.abs(w / 2), Math.abs(h / 2), 0, 0, 2 * Math.PI);
+                this.ctx.stroke();
+                break;
+
+            case 'triangle':
+                this.ctx.moveTo(x + w / 2, y);
+                this.ctx.lineTo(x + w, y + h);
+                this.ctx.lineTo(x, y + h);
+                this.ctx.closePath();
+                this.ctx.stroke();
+                break;
+
+            case 'right-triangle':
+                this.ctx.moveTo(x, y);
+                this.ctx.lineTo(x, y + h);
+                this.ctx.lineTo(x + w, y + h);
+                this.ctx.closePath();
+                this.ctx.stroke();
+                break;
+
+            case 'rhombus':
+                this.ctx.moveTo(x + w / 2, y);
+                this.ctx.lineTo(x + w, y + h / 2);
+                this.ctx.lineTo(x + w / 2, y + h);
+                this.ctx.lineTo(x, y + h / 2);
+                this.ctx.closePath();
+                this.ctx.stroke();
+                break;
+
+            case 'parallelogram':
+                const offset = w * 0.25;
+                this.ctx.moveTo(x + offset, y);
+                this.ctx.lineTo(x + w, y);
+                this.ctx.lineTo(x + w - offset, y + h);
+                this.ctx.lineTo(x, y + h);
+                this.ctx.closePath();
+                this.ctx.stroke();
+                break;
+
+            case 'trapezoid':
+                const topOffset = w * 0.2;
+                this.ctx.moveTo(x + topOffset, y);
+                this.ctx.lineTo(x + w - topOffset, y);
+                this.ctx.lineTo(x + w, y + h);
+                this.ctx.lineTo(x, y + h);
+                this.ctx.closePath();
+                this.ctx.stroke();
+                break;
+
+            case 'star':
+                this.drawStar(x + w / 2, y + h / 2, 5, Math.abs(w / 2), Math.abs(w / 4));
+                break;
+
+            case 'oxy':
+                this.drawOxyCoordinates(pos);
+                break;
         }
+    }
+
+    drawArrow(fromx, fromy, tox, toy) {
+        const headlen = Math.max(12, this.currentLineWidth * 3);
+        const dx = tox - fromx;
+        const dy = toy - fromy;
+        const angle = Math.atan2(dy, dx);
+
+        this.ctx.moveTo(fromx, fromy);
+        this.ctx.lineTo(tox, toy);
+        this.ctx.stroke();
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(tox, toy);
+        this.ctx.lineTo(tox - headlen * Math.cos(angle - Math.PI / 6), toy - headlen * Math.sin(angle - Math.PI / 6));
+        this.ctx.moveTo(tox, toy);
+        this.ctx.lineTo(tox - headlen * Math.cos(angle + Math.PI / 6), toy - headlen * Math.sin(angle + Math.PI / 6));
+        this.ctx.stroke();
+    }
+
+    drawStar(cx, cy, spikes, outerRadius, innerRadius) {
+        let rot = Math.PI / 2 * 3;
+        let step = Math.PI / spikes;
+
+        this.ctx.beginPath();
+        this.ctx.moveTo(cx, cy - outerRadius);
+
+        for (let i = 0; i < spikes; i++) {
+            let x = cx + Math.cos(rot) * outerRadius;
+            let y = cy + Math.sin(rot) * outerRadius;
+            this.ctx.lineTo(x, y);
+            rot += step;
+
+            x = cx + Math.cos(rot) * innerRadius;
+            y = cy + Math.sin(rot) * innerRadius;
+            this.ctx.lineTo(x, y);
+            rot += step;
+        }
+        this.ctx.lineTo(cx, cy - outerRadius);
+        this.ctx.closePath();
+        this.ctx.stroke();
     }
 
     drawOxyCoordinates(pos) {
@@ -355,11 +442,6 @@ class DrawEngine {
         this.ctx.fillText('y', originX - 4, originY - Math.max(Math.abs(height), 40) - 8);
     }
 
-    /**
-     * Plots y = f(x) centered in the current viewport, using the same Oxy
-     * axis convention as drawOxyCoordinates. `evaluate` is the safe
-     * expression evaluator from app.js, injected to avoid using eval().
-     */
     plotFunction(fnString, evaluate) {
         this.pushHistory();
 
@@ -420,16 +502,13 @@ class DrawEngine {
         if (this.hasStrokeChange) this.onStrokeEnd();
     }
 
-    // --- Undo / redo history -------------------------------------------------
     pushHistory() {
         try {
             this.undoStack.push(this.canvas.toDataURL());
             if (this.undoStack.length > this.maxHistory) this.undoStack.shift();
             this.redoStack = [];
             this.updateHistoryButtons();
-        } catch {
-            // toDataURL can throw on tainted canvases; ignore silently
-        }
+        } catch {}
     }
 
     undo() {
@@ -489,9 +568,6 @@ class DrawEngine {
         return this.canvas.toDataURL();
     }
 
-    /** Loads a saved raster into the canvas, stretched to fit its current
-     *  size — keeps annotations aligned even if the canvas was resized
-     *  (e.g. the PDF page was re-rendered at a different zoom level). */
     loadCanvasData(dataUrl) {
         if (!dataUrl) return;
         const img = new Image();
@@ -503,8 +579,7 @@ class DrawEngine {
     }
 }
 
-// --- Global Engine Instances -----------------------------------------------
-// Note workspace: full toolset (pen, highlighter, eraser, shapes, Oxy, graph)
+// Global Engine Instances
 window.canvasEngine = new DrawEngine({
     canvas: document.getElementById('note-canvas'),
     viewport: document.getElementById('workspace-viewport'),
@@ -512,7 +587,6 @@ window.canvasEngine = new DrawEngine({
     autoResize: true
 });
 
-// PDF pane: write / highlight directly on the loaded document
 window.pdfDrawEngine = new DrawEngine({
     canvas: document.getElementById('pdf-draw-canvas'),
     viewport: null,
