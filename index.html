@@ -17,7 +17,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <link rel="stylesheet" href="style.css">
 
-    <!-- Styles bổ sung cho ViewMode & Pen Dock Shapes -->
+    <!-- Styles bổ sung cho Sub-menu hình học & View Mode -->
     <style>
         .viewmode-group {
             display: flex;
@@ -84,17 +84,34 @@
         }
         #pdf-zoom-fit.active-fit { color: #0d9488; background: rgba(13, 148, 136, 0.14); }
 
-        /* Style grid hình vẽ trong Pen Dock */
-        .pen-shapes-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 4px;
-            max-width: 216px;
+        /* --- SUB-MENU CHỌN HÌNH GỌN GÀNG --- */
+        .shape-dropdown-wrapper {
+            position: relative;
+            display: inline-block;
         }
-        .pen-shapes-grid .tool-btn {
+        .shape-submenu {
+            display: none;
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+            background: var(--paper-panel, #ffffff);
+            border: 1px solid var(--border-color, #dfe4e1);
+            border-radius: 12px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            padding: 8px;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 6px;
+            z-index: 100;
+        }
+        .shape-dropdown-wrapper.open .shape-submenu {
+            display: grid;
+        }
+        .shape-submenu .tool-btn {
             width: 32px;
             height: 32px;
-            font-size: 12px;
+            font-size: 13px;
         }
     </style>
 
@@ -188,7 +205,7 @@
                     <canvas id="pdf-draw-canvas"></canvas>
                 </div>
 
-                <!-- Pen Dock PDF với đầy đủ hình vẽ -->
+                <!-- Pen Dock PDF với nút Hình học gộp gọn -->
                 <div class="pen-dock" id="pen-dock-pdf">
                     <button type="button" class="pen-fab" id="pen-fab-pdf" title="Bút viết trực tiếp lên PDF">
                         <i class="fa-solid fa-pen"></i>
@@ -200,17 +217,22 @@
                             <button type="button" class="tool-btn" data-tool="eraser" title="Cục tẩy"><i class="fa-solid fa-eraser"></i></button>
                             <button type="button" class="tool-btn" data-tool="line" title="Đường thẳng"><i class="fa-solid fa-slash"></i></button>
                             <button type="button" class="tool-btn" data-tool="arrow" title="Mũi tên"><i class="fa-solid fa-arrow-right"></i></button>
-                        </div>
-                        <div class="pen-pop-row pen-shapes-grid">
-                            <button type="button" class="tool-btn" data-tool="rect" title="Hình chữ nhật"><i class="fa-regular fa-square"></i></button>
-                            <button type="button" class="tool-btn" data-tool="circle" title="Hình tròn"><i class="fa-regular fa-circle"></i></button>
-                            <button type="button" class="tool-btn" data-tool="ellipse" title="Hình Elip"><i class="fa-solid fa-egg"></i></button>
-                            <button type="button" class="tool-btn" data-tool="triangle" title="Tam giác"><i class="fa-solid fa-play" style="transform: rotate(-90deg);"></i></button>
-                            <button type="button" class="tool-btn" data-tool="right-triangle" title="Tam giác vuông"><i class="fa-solid fa-vector-square"></i></button>
-                            <button type="button" class="tool-btn" data-tool="rhombus" title="Hình thoi"><i class="fa-solid fa-diamond"></i></button>
-                            <button type="button" class="tool-btn" data-tool="parallelogram" title="Hình bình hành"><i class="fa-solid fa-shapes"></i></button>
-                            <button type="button" class="tool-btn" data-tool="trapezoid" title="Hình thang"><i class="fa-solid fa-mountain"></i></button>
-                            <button type="button" class="tool-btn" data-tool="star" title="Ngôi sao"><i class="fa-regular fa-star"></i></button>
+
+                            <!-- Nút gộp Hình học -->
+                            <div class="shape-dropdown-wrapper">
+                                <button type="button" class="tool-btn btn-shape-toggle" title="Chọn hình học"><i class="fa-solid fa-shapes"></i></button>
+                                <div class="shape-submenu">
+                                    <button type="button" class="tool-btn" data-tool="rect" title="Hình chữ nhật"><i class="fa-regular fa-square"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="circle" title="Hình tròn"><i class="fa-regular fa-circle"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="ellipse" title="Hình Elip"><i class="fa-solid fa-egg"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="triangle" title="Tam giác thường"><i class="fa-solid fa-play" style="transform: rotate(-90deg);"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="right-triangle" title="Tam giác vuông"><i class="fa-solid fa-ruler-combined"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="rhombus" title="Hình thoi"><i class="fa-solid fa-diamond"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="parallelogram" title="Hình bình hành"><i class="fa-solid fa-draw-polygon"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="trapezoid" title="Hình thang"><i class="fa-solid fa-mountain"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="star" title="Ngôi sao"><i class="fa-regular fa-star"></i></button>
+                                </div>
+                            </div>
                         </div>
                         <div class="pen-pop-row">
                             <label class="color-picker-wrapper" title="Màu nét vẽ">
@@ -313,7 +335,7 @@
                 <div id="text-editor" contenteditable="true" spellcheck="false" placeholder="Nhập nội dung ghi chép tại đây…"></div>
                 <canvas id="note-canvas"></canvas>
 
-                <!-- Pen Dock Ghi chú với đầy đủ hình vẽ -->
+                <!-- Pen Dock Ghi chú với nút Hình học gộp gọn -->
                 <div class="pen-dock" id="pen-dock-note">
                     <button type="button" class="pen-fab" id="pen-fab-note" title="Bút viết tay">
                         <i class="fa-solid fa-pen"></i>
@@ -325,22 +347,27 @@
                             <button type="button" class="tool-btn" data-tool="eraser" title="Cục tẩy"><i class="fa-solid fa-eraser"></i></button>
                             <button type="button" class="tool-btn" data-tool="line" title="Đường thẳng"><i class="fa-solid fa-slash"></i></button>
                             <button type="button" class="tool-btn" data-tool="arrow" title="Mũi tên"><i class="fa-solid fa-arrow-right"></i></button>
-                        </div>
-                        <div class="pen-pop-row pen-shapes-grid">
-                            <button type="button" class="tool-btn" data-tool="rect" title="Hình chữ nhật"><i class="fa-regular fa-square"></i></button>
-                            <button type="button" class="tool-btn" data-tool="circle" title="Hình tròn"><i class="fa-regular fa-circle"></i></button>
-                            <button type="button" class="tool-btn" data-tool="ellipse" title="Hình Elip"><i class="fa-solid fa-egg"></i></button>
-                            <button type="button" class="tool-btn" data-tool="triangle" title="Tam giác"><i class="fa-solid fa-play" style="transform: rotate(-90deg);"></i></button>
-                            <button type="button" class="tool-btn" data-tool="right-triangle" title="Tam giác vuông"><i class="fa-solid fa-vector-square"></i></button>
-                            <button type="button" class="tool-btn" data-tool="rhombus" title="Hình thoi"><i class="fa-solid fa-diamond"></i></button>
-                            <button type="button" class="tool-btn" data-tool="parallelogram" title="Hình bình hành"><i class="fa-solid fa-shapes"></i></button>
-                            <button type="button" class="tool-btn" data-tool="trapezoid" title="Hình thang"><i class="fa-solid fa-mountain"></i></button>
-                            <button type="button" class="tool-btn" data-tool="star" title="Ngôi sao"><i class="fa-regular fa-star"></i></button>
+
+                            <!-- Nút gộp Hình học -->
+                            <div class="shape-dropdown-wrapper">
+                                <button type="button" class="tool-btn btn-shape-toggle" title="Chọn hình học"><i class="fa-solid fa-shapes"></i></button>
+                                <div class="shape-submenu">
+                                    <button type="button" class="tool-btn" data-tool="rect" title="Hình chữ nhật"><i class="fa-regular fa-square"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="circle" title="Hình tròn"><i class="fa-regular fa-circle"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="ellipse" title="Hình Elip"><i class="fa-solid fa-egg"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="triangle" title="Tam giác thường"><i class="fa-solid fa-play" style="transform: rotate(-90deg);"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="right-triangle" title="Tam giác vuông"><i class="fa-solid fa-ruler-combined"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="rhombus" title="Hình thoi"><i class="fa-solid fa-diamond"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="parallelogram" title="Hình bình hành"><i class="fa-solid fa-draw-polygon"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="trapezoid" title="Hình thang"><i class="fa-solid fa-mountain"></i></button>
+                                    <button type="button" class="tool-btn" data-tool="star" title="Ngôi sao"><i class="fa-regular fa-star"></i></button>
+                                </div>
+                            </div>
+
                             <button type="button" class="tool-btn" data-tool="oxy" title="Trục Oxy"><i class="fa-solid fa-chart-line"></i></button>
+                            <button type="button" class="tool-btn" data-tool="graph" title="Vẽ đồ thị y=f(x)"><i class="fa-solid fa-wave-square"></i></button>
                         </div>
-                        <div class="pen-pop-row">
-                            <button type="button" class="tool-btn" data-tool="graph" title="Vẽ đồ thị y=f(x)" style="width: 100%; border-radius: 8px;"><i class="fa-solid fa-wave-square"></i> <span style="font-size: 11px; margin-left: 4px;">Đồ thị f(x)</span></button>
-                        </div>
+
                         <div class="pen-pop-row">
                             <label class="color-picker-wrapper" title="Màu nét vẽ">
                                 <i class="fa-solid fa-palette"></i>
@@ -408,18 +435,18 @@
                 <button class="casio-btn" data-value="7">7</button>
                 <button class="casio-btn" data-value="8">8</button>
                 <button class="casio-btn" data-value="9">9</button>
-                <button class="casio-btn operator" data-value="*">×</button>
 
+                <button class="casio-btn operator" data-value="*">×</button>
                 <button class="casio-btn" data-value="4">4</button>
                 <button class="casio-btn" data-value="5">5</button>
                 <button class="casio-btn" data-value="6">6</button>
-                <button class="casio-btn operator" data-value="-">−</button>
 
+                <button class="casio-btn operator" data-value="-">−</button>
                 <button class="casio-btn" data-value="1">1</button>
                 <button class="casio-btn" data-value="2">2</button>
                 <button class="casio-btn" data-value="3">3</button>
-                <button class="casio-btn operator" data-value="+">+</button>
 
+                <button class="casio-btn operator" data-value="+">+</button>
                 <button class="casio-btn" data-value="0">0</button>
                 <button class="casio-btn" data-value=".">.</button>
                 <button class="casio-btn action-copy" id="btn-copy-casio" title="Chèn kết quả vào văn bản"><i class="fa-regular fa-copy"></i></button>
