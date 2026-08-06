@@ -280,6 +280,7 @@ class DrawEngine {
 
         this.applyStrokeStyle(pos);
         this.ctx.beginPath();
+        // Loại bỏ việc chấm nét phụ đối với bút Highlight để không bị đốm vuông đè ở 2 đầu
         if (this.currentTool !== 'highlighter') {
             this.ctx.arc(pos.x, pos.y, (this.currentLineWidth * (pos.pressure || 1)) / 2, 0, Math.PI * 2);
             this.ctx.fill();
