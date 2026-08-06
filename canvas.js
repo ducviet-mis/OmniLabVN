@@ -238,8 +238,8 @@ class DrawEngine {
         let border = 'rgba(255, 255, 255, 0.9)';
 
         if (this.currentTool === 'highlighter') {
-            size = this.currentLineWidth * 3;
-            bg = this.hexToRgba(this.currentColor, 0.45);
+            size = this.currentLineWidth * 3.5;
+            bg = this.hexToRgba(this.currentColor, 0.4);
         } else if (this.currentTool === 'eraser') {
             size = this.currentLineWidth * 4;
             bg = 'rgba(148, 163, 184, 0.15)';
@@ -256,7 +256,7 @@ class DrawEngine {
     }
 
     startDrawing(e) {
-        // Tự động ẩn bảng chọn công cụ lớn khi bắt đầu đặt tay vẽ
+        // Tự động ẩn bảng tùy chọn lớn khi người dùng chạm tay/bút xuống vẽ
         if (this.popover) {
             this.popover.style.display = 'none';
         }
@@ -308,10 +308,11 @@ class DrawEngine {
             this.ctx.fillStyle = this.currentColor;
             this.ctx.lineWidth = this.currentLineWidth * pressureScale;
         } else if (this.currentTool === 'highlighter') {
-            this.ctx.globalCompositeOperation = 'source-over';
-            this.ctx.strokeStyle = this.hexToRgba(this.currentColor, 0.35);
-            this.ctx.fillStyle = this.hexToRgba(this.currentColor, 0.35);
-            this.ctx.lineWidth = this.currentLineWidth * 3;
+            // Chế độ 'multiply' hòa trộn chìm xuống dưới giúp chữ luôn hiển thị rõ nét 100%
+            this.ctx.globalCompositeOperation = 'multiply';
+            this.ctx.strokeStyle = this.hexToRgba(this.currentColor, 0.4);
+            this.ctx.fillStyle = this.hexToRgba(this.currentColor, 0.4);
+            this.ctx.lineWidth = this.currentLineWidth * 3.5;
         } else if (this.currentTool === 'eraser') {
             this.ctx.globalCompositeOperation = 'destination-out';
             this.ctx.lineWidth = this.currentLineWidth * 4;
