@@ -139,8 +139,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // In-memory per-page store for direct PDF annotations (pageNum -> dataURL).
-    // Reset whenever a new document is loaded. (Chỉ giữ trong phiên làm việc,
-    // giống hành vi bản gốc — không đồng bộ lên Supabase.)
     let pdfDrawings = new Map();
 
     const savePdfPageDrawing = (num) => {
@@ -234,7 +232,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         pdfjsLib.getDocument({ data: buffer }).promise.then((pdf) => {
             pdfDoc = pdf;
-            pdfDrawings = new Map(); // fresh document — discard previous page annotations
+            pdfDrawings = new Map();
             const pageCountLabel = document.getElementById('pdf-page-count');
             if (pageCountLabel) pageCountLabel.textContent = pdf.numPages;
 
@@ -298,7 +296,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Chuyển trang & Zoom PDF (lưu nét vẽ trang hiện tại trước khi chuyển)
+    // Chuyển trang & Zoom PDF
     const btnPrev = document.getElementById('pdf-prev');
     const btnNext = document.getElementById('pdf-next');
     if (btnPrev) {
@@ -341,7 +339,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
-    // Điều hướng PDF bằng phím mũi tên (chỉ khi không gõ trong ô ghi chú)
     document.addEventListener('keydown', (e) => {
         const isTyping = document.activeElement && document.activeElement.id === 'text-editor';
         if (isTyping || !pdfDoc) return;
@@ -370,7 +367,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Make Casio Modal Draggable (mouse + touch)
     let isDraggingCasio = false;
     let casioOffsetX = 0, casioOffsetY = 0;
 
@@ -403,11 +399,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.addEventListener('touchend', () => isDraggingCasio = false);
     }
 
-    /**
-     * Tiny recursive-descent parser/evaluator for arithmetic expressions.
-     * Supports: + - * / ^ () unary minus, sin cos tan log ln sqrt, pi, e, n!, %
-     * Deliberately avoids eval()/Function() on user input.
-     */
     class ExpressionError extends Error {}
 
     function evaluateExpression(input) {
@@ -605,10 +596,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
-    // Keyboard input support while calculator is open
     if (casioDisplay) casioDisplay.addEventListener('keydown', (e) => e.preventDefault());
 
-    // Copy Result to Rich Text Editor
     const btnCopyCasio = document.getElementById('btn-copy-casio');
     if (btnCopyCasio) {
         btnCopyCasio.addEventListener('click', () => {
@@ -621,7 +610,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // ----------------------------------------------------------------------
-    // 6. FUNCTION GRAPH DIALOG (y = f(x)) — delegates plotting to CanvasEngine
+    // 6. FUNCTION GRAPH DIALOG (y = f(x))
     // ----------------------------------------------------------------------
     const graphModal = document.getElementById('graph-modal');
     const graphInput = document.getElementById('graph-function-input');
@@ -637,7 +626,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     const closeGraphDialog = () => { if (graphModal) graphModal.classList.add('hidden'); };
 
-    // Called by DrawEngine when its "Vẽ đồ thị" pen-dock button is clicked
     window.onGraphToolClick = (engine) => {
         graphTargetEngine = engine;
         openGraphDialog();
@@ -693,12 +681,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             noteTitleText.textContent = currentNoteTitle;
         }
 
-        // Tải lại file PDF nếu có
+        // Tải lại file PDF nếu có đường dẫn
         if (file.pdf_url) {
             loadPdfFromUrl(file.pdf_url, "Tài liệu PDF", file.last_page || 1);
         }
 
-        // Tải lại Text & Nét vẽ
+        // Tải lại Text & Nét vẽ Canvas
         if (file.text_data && window.richTextEditor) {
             window.richTextEditor.setContent(file.text_data);
         }
@@ -709,24 +697,32 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     const persistToSupabase = async () => {
-        if (!activeFileId || !supabaseClient) return;
+        if (!activeFileId || !supabaseClient) return false;
 
         const { data: { user } } = await supabaseClient.auth.getUser();
-        if (!user) return showToast("Vui lòng đăng nhập để lưu bài!", "error");
+        if (!user) {
+            showToast("Vui lòng đăng nhập để lưu bài!", "error");
+            return false;
+        }
 
         let pdfPublicUrl = null;
 
-        // Upload PDF nếu người dùng vừa nạp file mới
+        // Upload PDF lên Supabase Storage nếu người dùng vừa chọn file mới từ máy
         if (currentUploadedPdfFile) {
-            const filePath = `${user.id}/${Date.now()}_${currentUploadedPdfFile.name}`;
-            const { error: uploadErr } = await supabaseClient.storage
-                .from('pdf-files')
-                .upload(filePath, currentUploadedPdfFile);
+            const cleanFileName = currentUploadedPdfFile.name.replace(/[^a-zA-Z0-9.]/g, '_');
+            const filePath = `${user.id}/${Date.now()}_${cleanFileName}`;
 
-            if (!uploadErr) {
+            const { data: uploadData, error: uploadErr } = await supabaseClient.storage
+                .from('pdf-files')
+                .upload(filePath, currentUploadedPdfFile, { upsert: true });
+
+            if (uploadErr) {
+                console.error("Lỗi upload PDF:", uploadErr);
+                showToast(`Lỗi upload PDF: ${uploadErr.message}`, 'error');
+            } else {
                 const { data: urlData } = supabaseClient.storage.from('pdf-files').getPublicUrl(filePath);
                 pdfPublicUrl = urlData.publicUrl;
-                currentUploadedPdfFile = null; // đã upload xong, tránh upload lại lần sau
+                currentUploadedPdfFile = null; // Đã upload xong, tránh upload lại ở lần lưu sau
             }
         }
 
@@ -743,7 +739,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             updated_at: new Date()
         };
 
-        if (pdfPublicUrl) updatePayload.pdf_url = pdfPublicUrl;
+        // Lưu thêm URL của PDF vào database nếu có
+        if (pdfPublicUrl) {
+            updatePayload.pdf_url = pdfPublicUrl;
+        }
 
         const { error } = await supabaseClient
             .from('files')
@@ -782,7 +781,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         const ok = await persistToSupabase();
         if (ok) {
             markSaved();
-            showToast('Đã lưu bài học lên mây thành công!', 'info', 'fa-cloud-arrow-up');
+            showToast('Đã lưu bài học & PDF lên mây thành công!', 'info', 'fa-cloud-arrow-up');
         } else {
             showToast('Lỗi khi lưu bài học.', 'error');
         }
@@ -791,7 +790,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnSave = document.getElementById('btn-save');
     if (btnSave) btnSave.addEventListener('click', saveData);
 
-    // Nút xóa toàn bộ dữ liệu (chữ viết + hình vẽ), đồng bộ lên Supabase
     const btnClearAll = document.getElementById('btn-clear-all');
     if (btnClearAll) {
         btnClearAll.addEventListener('click', async () => {
@@ -806,7 +804,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
-    // Global keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         const ctrl = e.ctrlKey || e.metaKey;
         if (ctrl && e.key.toLowerCase() === 's') {
@@ -819,7 +816,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
-    // Warn before leaving with unsaved changes
     window.addEventListener('beforeunload', (e) => {
         if (autosaveDot && autosaveDot.classList.contains('unsaved')) {
             e.preventDefault();
