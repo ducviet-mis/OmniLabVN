@@ -158,6 +158,7 @@ class RichTextEditor {
     exec(command, value = null) {
         document.execCommand(command, false, value);
         this.editor.focus();
+        this.updateActiveStates();
     }
 
     setFontSize(pixelSize) {
