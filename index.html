@@ -17,12 +17,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <link rel="stylesheet" href="style.css">
 
-    <!-- =====================================================================
-         VIEW MODE SWITCHER — bổ sung: Song song / Chỉ PDF / Chỉ Ghi chú
-         Đặt trong <style> riêng để không cần chỉnh sửa style.css gốc.
-         ===================================================================== -->
+    <!-- Styles bổ sung cho ViewMode & Pen Dock Shapes -->
     <style>
-        /* ---- 1. Segmented control trong header ---- */
         .viewmode-group {
             display: flex;
             align-items: center;
@@ -50,21 +46,9 @@
             transition: background 0.15s ease, color 0.15s ease;
         }
         .viewmode-btn i { font-size: 13px; }
-        .viewmode-btn:hover {
-            background: rgba(255, 255, 255, 0.10);
-            color: #fff;
-        }
-        .viewmode-btn.active {
-            background: #0d9488;
-            color: #fff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
-        }
-        @media (max-width: 1180px) {
-            .viewmode-btn span { display: none; }
-            .viewmode-btn { padding: 7px 9px; }
-        }
+        .viewmode-btn:hover { background: rgba(255, 255, 255, 0.10); color: #fff; }
+        .viewmode-btn.active { background: #0d9488; color: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25); }
 
-        /* ---- 2. Bố cục theo chế độ xem trên .main-container ---- */
         .main-container[data-view-mode="pdf"] #workspace,
         .main-container[data-view-mode="pdf"] #resizer,
         .main-container[data-view-mode="note"] #pdf-container,
@@ -78,80 +62,42 @@
             flex: 1 1 100% !important;
         }
 
-        /* ---- 3. Nút "Mở nhanh" nổi — chỉ xuất hiện ở chế độ xem đơn ---- */
         .quick-switch-fab {
-            position: fixed;
-            left: 22px;
-            bottom: 22px;
-            z-index: 500;
-            display: flex;
-            align-items: center;
-            gap: 9px;
-            padding: 12px 18px 12px 15px;
-            background: #0d9488;
-            color: #fff;
-            border: none;
-            border-radius: 999px;
-            font-family: 'Inter', sans-serif;
-            font-size: 14px;
-            font-weight: 600;
-            cursor: pointer;
-            box-shadow: 0 6px 18px rgba(13, 148, 136, 0.4), 0 2px 6px rgba(0, 0, 0, 0.15);
-            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+            position: fixed; left: 22px; bottom: 22px; z-index: 500;
+            display: flex; align-items: center; gap: 9px;
+            padding: 12px 18px 12px 15px; background: #0d9488; color: #fff;
+            border: none; border-radius: 999px; font-family: 'Inter', sans-serif;
+            font-size: 14px; font-weight: 600; cursor: pointer;
+            box-shadow: 0 6px 18px rgba(13, 148, 136, 0.4);
+            transition: transform 0.15s ease, box-shadow 0.15s ease;
         }
-        .quick-switch-fab i { font-size: 15px; }
-        .quick-switch-fab:hover {
-            background: #0f766e;
-            transform: translateY(-2px);
-            box-shadow: 0 10px 22px rgba(13, 148, 136, 0.45), 0 3px 8px rgba(0, 0, 0, 0.2);
-        }
-        .quick-switch-fab:active { transform: translateY(0); }
         .quick-switch-fab.hidden { display: none !important; }
 
-        @media (max-width: 640px) {
-            .quick-switch-fab span { display: none; }
-            .quick-switch-fab { padding: 14px; border-radius: 50%; }
-        }
-
-        /* ---- 4. Thanh trượt Zoom PDF tự do + nút "Vừa khung" ---- */
         .pdf-zoom-slider {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 90px;
-            height: 4px;
-            border-radius: 999px;
-            background: rgba(120, 120, 130, 0.25);
-            outline: none;
-            cursor: pointer;
-            vertical-align: middle;
+            -webkit-appearance: none; appearance: none;
+            width: 90px; height: 4px; border-radius: 999px;
+            background: rgba(120, 120, 130, 0.25); outline: none; cursor: pointer;
         }
         .pdf-zoom-slider::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: #0d9488;
-            border: 2px solid #fff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-            cursor: pointer;
+            -webkit-appearance: none; appearance: none;
+            width: 14px; height: 14px; border-radius: 50%; background: #0d9488; border: 2px solid #fff;
         }
-        .pdf-zoom-slider::-moz-range-thumb {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: #0d9488;
-            border: 2px solid #fff;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-            cursor: pointer;
+        #pdf-zoom-fit.active-fit { color: #0d9488; background: rgba(13, 148, 136, 0.14); }
+
+        /* Style grid hình vẽ trong Pen Dock */
+        .pen-shapes-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 4px;
+            max-width: 216px;
         }
-        #pdf-zoom-fit.active-fit {
-            color: #0d9488;
-            background: rgba(13, 148, 136, 0.14);
+        .pen-shapes-grid .tool-btn {
+            width: 32px;
+            height: 32px;
+            font-size: 12px;
         }
     </style>
 
-    <!-- Favicon (inline flask emoji) -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AA%3C/text%3E%3C/svg%3E">
 </head>
 <body>
@@ -170,21 +116,19 @@
             <span id="note-title-text">Ghi chú mới</span>
         </div>
 
-        <!-- File Operations & Tools -->
         <div class="header-actions">
             <a href="home.html" class="action-btn icon-btn" title="Về trang chủ">
                 <i class="fa-solid fa-house"></i>
             </a>
 
-            <!-- View Mode Switcher: Song song / Chỉ PDF / Chỉ Ghi chú -->
-            <div class="viewmode-group" id="viewmode-group" role="group" aria-label="Chế độ hiển thị không gian làm việc">
-                <button type="button" class="viewmode-btn active" data-mode="split" title="Song song: hiển thị PDF và Ghi chú cùng lúc">
+            <div class="viewmode-group" id="viewmode-group" role="group">
+                <button type="button" class="viewmode-btn active" data-mode="split" title="Song song">
                     <i class="fa-solid fa-table-columns"></i><span>Song song</span>
                 </button>
-                <button type="button" class="viewmode-btn" data-mode="pdf" title="Chỉ hiển thị PDF, ẩn Ghi chú">
+                <button type="button" class="viewmode-btn" data-mode="pdf" title="Chỉ PDF">
                     <i class="fa-solid fa-file-pdf"></i><span>Chỉ PDF</span>
                 </button>
-                <button type="button" class="viewmode-btn" data-mode="note" title="Chỉ hiển thị Ghi chú, ẩn PDF">
+                <button type="button" class="viewmode-btn" data-mode="note" title="Chỉ Ghi chú">
                     <i class="fa-solid fa-note-sticky"></i><span>Chỉ Ghi chú</span>
                 </button>
             </div>
@@ -223,10 +167,10 @@
                 <div class="pdf-doc-name" id="pdf-doc-name">Chưa có tài liệu</div>
                 <div class="pdf-zoom-controls">
                     <button id="pdf-zoom-out" class="tool-btn" title="Thu nhỏ"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
-                    <input type="range" id="pdf-zoom-slider" class="pdf-zoom-slider" min="30" max="300" step="1" value="100" title="Kéo để chỉnh kích thước PDF tự do">
+                    <input type="range" id="pdf-zoom-slider" class="pdf-zoom-slider" min="30" max="300" step="1" value="100" title="Kéo để chỉnh kích thước PDF">
                     <span id="pdf-zoom-level">100%</span>
                     <button id="pdf-zoom-in" class="tool-btn" title="Phóng to"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
-                    <button id="pdf-zoom-fit" class="tool-btn active-fit" title="Tự động vừa khung theo cột PDF"><i class="fa-solid fa-arrows-left-right-to-line"></i></button>
+                    <button id="pdf-zoom-fit" class="tool-btn active-fit" title="Tự động vừa khung"><i class="fa-solid fa-arrows-left-right-to-line"></i></button>
                 </div>
             </div>
             <div id="pdf-render-wrapper" class="pdf-viewport">
@@ -239,25 +183,34 @@
                     <span class="spinner"></span> Đang tải tài liệu…
                 </div>
 
-                <!-- PDF page render layer + direct-annotation drawing layer -->
                 <div id="pdf-page-stage" class="pdf-page-stage">
                     <canvas id="pdf-canvas"></canvas>
                     <canvas id="pdf-draw-canvas"></canvas>
                 </div>
 
-                <!-- Floating Pen Dock — write / highlight directly on the PDF -->
+                <!-- Pen Dock PDF với đầy đủ hình vẽ -->
                 <div class="pen-dock" id="pen-dock-pdf">
-                    <button type="button" class="pen-fab" id="pen-fab-pdf" title="Bút viết trực tiếp lên PDF (nhấn để mở công cụ)">
+                    <button type="button" class="pen-fab" id="pen-fab-pdf" title="Bút viết trực tiếp lên PDF">
                         <i class="fa-solid fa-pen"></i>
                     </button>
                     <div class="pen-popover" id="pen-popover-pdf">
                         <div class="pen-pop-row">
                             <button type="button" class="tool-btn active" data-tool="pen" title="Bút vẽ"><i class="fa-solid fa-pen"></i></button>
-                            <button type="button" class="tool-btn" data-tool="highlighter" title="Bút dạ quang (Highlight)"><i class="fa-solid fa-marker"></i></button>
+                            <button type="button" class="tool-btn" data-tool="highlighter" title="Bút dạ quang"><i class="fa-solid fa-marker"></i></button>
                             <button type="button" class="tool-btn" data-tool="eraser" title="Cục tẩy"><i class="fa-solid fa-eraser"></i></button>
                             <button type="button" class="tool-btn" data-tool="line" title="Đường thẳng"><i class="fa-solid fa-slash"></i></button>
+                            <button type="button" class="tool-btn" data-tool="arrow" title="Mũi tên"><i class="fa-solid fa-arrow-right"></i></button>
+                        </div>
+                        <div class="pen-pop-row pen-shapes-grid">
                             <button type="button" class="tool-btn" data-tool="rect" title="Hình chữ nhật"><i class="fa-regular fa-square"></i></button>
                             <button type="button" class="tool-btn" data-tool="circle" title="Hình tròn"><i class="fa-regular fa-circle"></i></button>
+                            <button type="button" class="tool-btn" data-tool="ellipse" title="Hình Elip"><i class="fa-solid fa-egg"></i></button>
+                            <button type="button" class="tool-btn" data-tool="triangle" title="Tam giác"><i class="fa-solid fa-play" style="transform: rotate(-90deg);"></i></button>
+                            <button type="button" class="tool-btn" data-tool="right-triangle" title="Tam giác vuông"><i class="fa-solid fa-vector-square"></i></button>
+                            <button type="button" class="tool-btn" data-tool="rhombus" title="Hình thoi"><i class="fa-solid fa-diamond"></i></button>
+                            <button type="button" class="tool-btn" data-tool="parallelogram" title="Hình bình hành"><i class="fa-solid fa-shapes"></i></button>
+                            <button type="button" class="tool-btn" data-tool="trapezoid" title="Hình thang"><i class="fa-solid fa-mountain"></i></button>
+                            <button type="button" class="tool-btn" data-tool="star" title="Ngôi sao"><i class="fa-regular fa-star"></i></button>
                         </div>
                         <div class="pen-pop-row">
                             <label class="color-picker-wrapper" title="Màu nét vẽ">
@@ -288,10 +241,7 @@
 
         <!-- Right Column: Note & Canvas Workspace -->
         <section id="workspace" class="split-pane">
-
-            <!-- Dynamic Toolbars Slot -->
             <div class="workspace-toolbars">
-                <!-- Rich Text Editor Toolbar -->
                 <div id="editor-toolbar" class="toolbar-panel active">
                     <select id="font-family" class="tool-select" title="Phông chữ">
                         <option value="Inter" selected>Inter · Hiện đại</option>
@@ -360,29 +310,36 @@
 
             <!-- Double Layer Canvas & Text Workspace -->
             <div id="workspace-viewport" class="workspace-viewport">
-                <!-- Layer 1: Rich Text Content Editable -->
                 <div id="text-editor" contenteditable="true" spellcheck="false" placeholder="Nhập nội dung ghi chép tại đây…"></div>
-
-                <!-- Layer 2: HTML5 Canvas Overlay -->
                 <canvas id="note-canvas"></canvas>
 
-                <!-- Floating Pen Dock — click to draw, collapses back to a single round button -->
+                <!-- Pen Dock Ghi chú với đầy đủ hình vẽ -->
                 <div class="pen-dock" id="pen-dock-note">
-                    <button type="button" class="pen-fab" id="pen-fab-note" title="Bút viết tay (nhấn để mở công cụ)">
+                    <button type="button" class="pen-fab" id="pen-fab-note" title="Bút viết tay">
                         <i class="fa-solid fa-pen"></i>
                     </button>
                     <div class="pen-popover" id="pen-popover-note">
                         <div class="pen-pop-row">
                             <button type="button" class="tool-btn active" data-tool="pen" title="Bút vẽ"><i class="fa-solid fa-pen"></i></button>
-                            <button type="button" class="tool-btn" data-tool="highlighter" title="Bút dạ quang (Highlight)"><i class="fa-solid fa-marker"></i></button>
+                            <button type="button" class="tool-btn" data-tool="highlighter" title="Bút dạ quang"><i class="fa-solid fa-marker"></i></button>
                             <button type="button" class="tool-btn" data-tool="eraser" title="Cục tẩy"><i class="fa-solid fa-eraser"></i></button>
-                        </div>
-                        <div class="pen-pop-row">
                             <button type="button" class="tool-btn" data-tool="line" title="Đường thẳng"><i class="fa-solid fa-slash"></i></button>
+                            <button type="button" class="tool-btn" data-tool="arrow" title="Mũi tên"><i class="fa-solid fa-arrow-right"></i></button>
+                        </div>
+                        <div class="pen-pop-row pen-shapes-grid">
                             <button type="button" class="tool-btn" data-tool="rect" title="Hình chữ nhật"><i class="fa-regular fa-square"></i></button>
                             <button type="button" class="tool-btn" data-tool="circle" title="Hình tròn"><i class="fa-regular fa-circle"></i></button>
-                            <button type="button" class="tool-btn" data-tool="oxy" title="Hệ trục tọa độ Oxy"><i class="fa-solid fa-chart-line"></i></button>
-                            <button type="button" class="tool-btn" data-tool="graph" title="Vẽ đồ thị hàm số y=f(x)"><i class="fa-solid fa-wave-square"></i></button>
+                            <button type="button" class="tool-btn" data-tool="ellipse" title="Hình Elip"><i class="fa-solid fa-egg"></i></button>
+                            <button type="button" class="tool-btn" data-tool="triangle" title="Tam giác"><i class="fa-solid fa-play" style="transform: rotate(-90deg);"></i></button>
+                            <button type="button" class="tool-btn" data-tool="right-triangle" title="Tam giác vuông"><i class="fa-solid fa-vector-square"></i></button>
+                            <button type="button" class="tool-btn" data-tool="rhombus" title="Hình thoi"><i class="fa-solid fa-diamond"></i></button>
+                            <button type="button" class="tool-btn" data-tool="parallelogram" title="Hình bình hành"><i class="fa-solid fa-shapes"></i></button>
+                            <button type="button" class="tool-btn" data-tool="trapezoid" title="Hình thang"><i class="fa-solid fa-mountain"></i></button>
+                            <button type="button" class="tool-btn" data-tool="star" title="Ngôi sao"><i class="fa-regular fa-star"></i></button>
+                            <button type="button" class="tool-btn" data-tool="oxy" title="Trục Oxy"><i class="fa-solid fa-chart-line"></i></button>
+                        </div>
+                        <div class="pen-pop-row">
+                            <button type="button" class="tool-btn" data-tool="graph" title="Vẽ đồ thị y=f(x)" style="width: 100%; border-radius: 8px;"><i class="fa-solid fa-wave-square"></i> <span style="font-size: 11px; margin-left: 4px;">Đồ thị f(x)</span></button>
                         </div>
                         <div class="pen-pop-row">
                             <label class="color-picker-wrapper" title="Màu nét vẽ">
@@ -405,7 +362,7 @@
                 </div>
             </div>
 
-            <!-- Status / Telemetry Footer -->
+            <!-- Status Footer -->
             <div class="workspace-status">
                 <span class="status-item" id="status-wordcount"><i class="fa-solid fa-input-text"></i> 0 từ</span>
                 <span class="status-item" id="status-autosave"><span class="status-dot" id="autosave-dot"></span><span id="autosave-text">Đã lưu</span></span>
@@ -499,19 +456,14 @@
         </div>
     </div>
 
-    <!-- Quick-Switch Floating Button — chỉ hiện khi đang ở chế độ xem đơn (Chỉ PDF / Chỉ Ghi chú) -->
     <button type="button" id="btn-quick-switch" class="quick-switch-fab hidden" title="Mở nhanh cửa sổ còn lại">
         <i class="fa-solid fa-arrow-right-arrow-left"></i>
         <span id="quick-switch-label">Mở Ghi chú</span>
     </button>
 
-    <!-- Toast Notification Stack -->
     <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
 
-    <!-- Supabase JS CDN Integration -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <!-- Application Script Files -->
     <script src="editor.js"></script>
     <script src="canvas.js"></script>
     <script src="app.js"></script>
