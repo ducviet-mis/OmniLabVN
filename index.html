@@ -17,6 +17,103 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
     <link rel="stylesheet" href="style.css">
 
+    <!-- =====================================================================
+         VIEW MODE SWITCHER — bổ sung: Song song / Chỉ PDF / Chỉ Ghi chú
+         Đặt trong <style> riêng để không cần chỉnh sửa style.css gốc.
+         ===================================================================== -->
+    <style>
+        /* ---- 1. Segmented control trong header ---- */
+        .viewmode-group {
+            display: flex;
+            align-items: center;
+            gap: 2px;
+            padding: 3px;
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 10px;
+            margin-right: 4px;
+        }
+        .viewmode-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            border: none;
+            background: transparent;
+            color: rgba(255, 255, 255, 0.72);
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 7px 12px;
+            border-radius: 7px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s ease, color 0.15s ease;
+        }
+        .viewmode-btn i { font-size: 13px; }
+        .viewmode-btn:hover {
+            background: rgba(255, 255, 255, 0.10);
+            color: #fff;
+        }
+        .viewmode-btn.active {
+            background: #0d9488;
+            color: #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25);
+        }
+        @media (max-width: 1180px) {
+            .viewmode-btn span { display: none; }
+            .viewmode-btn { padding: 7px 9px; }
+        }
+
+        /* ---- 2. Bố cục theo chế độ xem trên .main-container ---- */
+        .main-container[data-view-mode="pdf"] #workspace,
+        .main-container[data-view-mode="pdf"] #resizer,
+        .main-container[data-view-mode="note"] #pdf-container,
+        .main-container[data-view-mode="note"] #resizer {
+            display: none !important;
+        }
+        .main-container[data-view-mode="pdf"] #pdf-container,
+        .main-container[data-view-mode="note"] #workspace {
+            width: 100% !important;
+            max-width: 100% !important;
+            flex: 1 1 100% !important;
+        }
+
+        /* ---- 3. Nút "Mở nhanh" nổi — chỉ xuất hiện ở chế độ xem đơn ---- */
+        .quick-switch-fab {
+            position: fixed;
+            left: 22px;
+            bottom: 22px;
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            gap: 9px;
+            padding: 12px 18px 12px 15px;
+            background: #0d9488;
+            color: #fff;
+            border: none;
+            border-radius: 999px;
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 6px 18px rgba(13, 148, 136, 0.4), 0 2px 6px rgba(0, 0, 0, 0.15);
+            transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+        }
+        .quick-switch-fab i { font-size: 15px; }
+        .quick-switch-fab:hover {
+            background: #0f766e;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 22px rgba(13, 148, 136, 0.45), 0 3px 8px rgba(0, 0, 0, 0.2);
+        }
+        .quick-switch-fab:active { transform: translateY(0); }
+        .quick-switch-fab.hidden { display: none !important; }
+
+        @media (max-width: 640px) {
+            .quick-switch-fab span { display: none; }
+            .quick-switch-fab { padding: 14px; border-radius: 50%; }
+        }
+    </style>
+
     <!-- Favicon (inline flask emoji) -->
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AA%3C/text%3E%3C/svg%3E">
 </head>
@@ -41,6 +138,20 @@
             <a href="home.html" class="action-btn icon-btn" title="Về trang chủ">
                 <i class="fa-solid fa-house"></i>
             </a>
+
+            <!-- View Mode Switcher: Song song / Chỉ PDF / Chỉ Ghi chú -->
+            <div class="viewmode-group" id="viewmode-group" role="group" aria-label="Chế độ hiển thị không gian làm việc">
+                <button type="button" class="viewmode-btn active" data-mode="split" title="Song song: hiển thị PDF và Ghi chú cùng lúc">
+                    <i class="fa-solid fa-table-columns"></i><span>Song song</span>
+                </button>
+                <button type="button" class="viewmode-btn" data-mode="pdf" title="Chỉ hiển thị PDF, ẩn Ghi chú">
+                    <i class="fa-solid fa-file-pdf"></i><span>Chỉ PDF</span>
+                </button>
+                <button type="button" class="viewmode-btn" data-mode="note" title="Chỉ hiển thị Ghi chú, ẩn PDF">
+                    <i class="fa-solid fa-note-sticky"></i><span>Chỉ Ghi chú</span>
+                </button>
+            </div>
+
             <label for="pdf-upload" class="action-btn upload-btn" title="Tải file PDF lên">
                 <i class="fa-solid fa-file-arrow-up"></i> <span>Mở PDF</span>
             </label>
@@ -348,6 +459,12 @@
             </div>
         </div>
     </div>
+
+    <!-- Quick-Switch Floating Button — chỉ hiện khi đang ở chế độ xem đơn (Chỉ PDF / Chỉ Ghi chú) -->
+    <button type="button" id="btn-quick-switch" class="quick-switch-fab hidden" title="Mở nhanh cửa sổ còn lại">
+        <i class="fa-solid fa-arrow-right-arrow-left"></i>
+        <span id="quick-switch-label">Mở Ghi chú</span>
+    </button>
 
     <!-- Toast Notification Stack -->
     <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
