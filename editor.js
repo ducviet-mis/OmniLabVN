@@ -1,15 +1,15 @@
 /**
- * OMNILAB - RICH TEXT EDITOR ENGINE (WITH EXTENDED TABLE & DROPDOWN MODULE)
+ * OMNILAB - RICH TEXT EDITOR ENGINE
+ * Fully manages formatting, font selection, alignments, lists, line height,
+ * keyboard shortcuts, undo/redo, and a quick scientific-symbol palette.
  */
 
 class RichTextEditor {
     constructor() {
         this.editor = document.getElementById('text-editor');
-        this.activeTable = null;
-        this.selectedCells = [];
         this.initControls();
         this.initEvents();
-        this.initMoreDropdownAndTable();
+        this.initSymbolPalette();
     }
 
     initControls() {
@@ -28,16 +28,17 @@ class RichTextEditor {
         this.textColorInput = document.getElementById('text-color');
         this.textBgColorInput = document.getElementById('text-bg-color');
 
+        this.btnBulletList = document.getElementById('btn-bullet-list');
+        this.btnNumberList = document.getElementById('btn-number-list');
+        this.btnFormula = document.getElementById('btn-formula');
+        this.lineHeightSelect = document.getElementById('line-height');
+
         this.btnUndo = document.getElementById('btn-undo-text');
         this.btnRedo = document.getElementById('btn-redo-text');
-
-        // Dropdown toggle & Table Context Menu
-        this.btnMoreToggle = document.getElementById('btn-more-toggle');
-        this.morePopoverMenu = document.getElementById('more-popover-menu');
-        this.tableContextMenu = document.getElementById('table-context-menu');
     }
 
     initEvents() {
+        // Executive Commands Execution
         this.fontFamilySelect.addEventListener('change', (e) => this.setFontFamily(e.target.value));
         this.fontSizeSelect.addEventListener('change', (e) => this.setFontSize(e.target.value));
 
@@ -51,19 +52,29 @@ class RichTextEditor {
         this.btnAlignRight.addEventListener('click', () => this.exec('justifyRight'));
         this.btnAlignJustify.addEventListener('click', () => this.exec('justifyFull'));
 
+        // Ngăn các nút định dạng cướp focus/selection của editor khi click.
         [
             this.btnBold, this.btnItalic, this.btnUnderline, this.btnStrikethrough,
-            this.btnAlignLeft, this.btnAlignCenter, this.btnAlignRight, this.btnAlignJustify
+            this.btnAlignLeft, this.btnAlignCenter, this.btnAlignRight, this.btnAlignJustify,
+            this.btnBulletList, this.btnNumberList
         ].forEach((btn) => {
-            if (btn) btn.addEventListener('mousedown', (e) => e.preventDefault());
+            btn.addEventListener('mousedown', (e) => e.preventDefault());
         });
 
         this.textColorInput.addEventListener('input', (e) => this.exec('foreColor', e.target.value));
         this.textBgColorInput.addEventListener('input', (e) => this.exec('hiliteColor', e.target.value));
 
+        this.btnBulletList.addEventListener('click', () => this.exec('insertUnorderedList'));
+        this.btnNumberList.addEventListener('click', () => this.exec('insertOrderedList'));
+
+        this.lineHeightSelect.addEventListener('change', (e) => {
+            this.setLineHeight(e.target.value);
+        });
+
         this.btnUndo.addEventListener('click', () => this.exec('undo'));
         this.btnRedo.addEventListener('click', () => this.exec('redo'));
 
+        // Keyboard shortcuts
         this.editor.addEventListener('keydown', (e) => {
             const ctrl = e.ctrlKey || e.metaKey;
             if (!ctrl) return;
@@ -73,283 +84,70 @@ class RichTextEditor {
             else if (key === 'u') { e.preventDefault(); this.exec('underline'); }
         });
 
+        // Keep Selection Active State Synced
         document.addEventListener('selectionchange', () => this.updateActiveStates());
-
-        // Lắng nghe click trong editor để xử lý Bảng
-        this.editor.addEventListener('click', (e) => {
-            const td = e.target.closest('td, th');
-            const table = e.target.closest('table.omni-table');
-
-            if (table) {
-                this.activeTable = table;
-                this.positionTableContextMenu(table);
-            } else {
-                this.hideTableContextMenu();
-            }
-
-            if (td && e.shiftKey && this.activeTable) {
-                if (!this.selectedCells.includes(td)) this.selectedCells.push(td);
-                td.classList.add('selected-cell');
-            } else if (td) {
-                this.clearCellSelections();
-                this.selectedCells = [td];
-                td.classList.add('selected-cell');
-            }
-        });
     }
 
-    initMoreDropdownAndTable() {
-        if (!this.btnMoreToggle || !this.morePopoverMenu) return;
+    initSymbolPalette() {
+        const symbols = ['√', 'π', '∞', '≤', '≥', '±', '→', 'Δ', 'θ', 'α', 'β', 'Σ', '∫', '·', '²', '³', '₂', '°'];
 
-        // Toggle More Dropdown
-        this.btnMoreToggle.addEventListener('click', (e) => {
+        this.palette = document.createElement('div');
+        this.palette.className = 'symbol-palette hidden';
+        this.palette.setAttribute('role', 'menu');
+        Object.assign(this.palette.style, {
+            position: 'absolute', display: 'grid',
+            gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px',
+            background: 'var(--paper-panel)', border: '1px solid var(--border-color)',
+            borderRadius: '10px', padding: '8px', boxShadow: 'var(--shadow-lg)',
+            zIndex: '500'
+        });
+        this.palette.classList.add('hidden');
+
+        symbols.forEach(sym => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = sym;
+            Object.assign(b.style, {
+                width: '30px', height: '30px', border: 'none', borderRadius: '7px',
+                background: 'var(--paper-sunken)', color: 'var(--text-ink)', cursor: 'pointer',
+                fontSize: '14px'
+            });
+            b.addEventListener('mouseenter', () => b.style.background = 'var(--accent-soft)');
+            b.addEventListener('mouseleave', () => b.style.background = 'var(--paper-sunken)');
+            b.addEventListener('click', () => {
+                this.insertTextAtCursor(sym);
+                this.hidePalette();
+            });
+            this.palette.appendChild(b);
+        });
+
+        document.body.appendChild(this.palette);
+
+        this.btnFormula.addEventListener('click', (e) => {
             e.stopPropagation();
-            const isOpen = this.morePopoverMenu.classList.contains('open');
-            this.setMoreDropdownOpen(!isOpen);
+            this.togglePalette();
         });
-
-        // Click outside -> Tự động đóng Dropdown
         document.addEventListener('click', (e) => {
-            if (!this.morePopoverMenu.contains(e.target) && !this.btnMoreToggle.contains(e.target)) {
-                this.setMoreDropdownOpen(false);
-            }
-        });
-
-        // Khởi tạo Grid Selector 10x10
-        const gridContainer = document.getElementById('table-grid-container');
-        const gridStatus = document.getElementById('table-grid-status');
-
-        if (gridContainer) {
-            gridContainer.innerHTML = '';
-            for (let r = 1; r <= 10; r++) {
-                for (let c = 1; c <= 10; c++) {
-                    const cell = document.createElement('div');
-                    cell.className = 'grid-cell';
-                    cell.dataset.row = r;
-                    cell.dataset.col = c;
-
-                    cell.addEventListener('mouseenter', () => {
-                        this.highlightGridCells(r, c);
-                        if (gridStatus) gridStatus.textContent = `${c} x ${r} Table`;
-                    });
-
-                    cell.addEventListener('click', () => {
-                        this.insertTable(r, c);
-                        this.setMoreDropdownOpen(false);
-                    });
-
-                    gridContainer.appendChild(cell);
-                }
-            }
-        }
-
-        // Gắn sự kiện cho Context Menu Bảng
-        this.initTableContextMenuEvents();
-    }
-
-    setMoreDropdownOpen(open) {
-        if (open) {
-            this.morePopoverMenu.classList.add('open');
-            this.btnMoreToggle.classList.add('active');
-        } else {
-            this.morePopoverMenu.classList.remove('open');
-            this.btnMoreToggle.classList.remove('active');
-        }
-    }
-
-    highlightGridCells(maxR, maxC) {
-        const cells = document.querySelectorAll('#table-grid-container .grid-cell');
-        cells.forEach((cell) => {
-            const r = parseInt(cell.dataset.row, 10);
-            const c = parseInt(cell.dataset.col, 10);
-            if (r <= maxR && c <= maxC) {
-                cell.classList.add('active');
-            } else {
-                cell.classList.remove('active');
-            }
+            if (!this.palette.contains(e.target) && e.target !== this.btnFormula) this.hidePalette();
         });
     }
 
-    insertTable(rows, cols) {
-        this.editor.focus();
-        let html = '<div class="omni-table-wrapper"><table class="omni-table"><tbody>';
-        for (let r = 0; r < rows; r++) {
-            html += '<tr>';
-            for (let c = 0; c < cols; c++) {
-                html += '<td><br></td>';
-            }
-            html += '</tr>';
-        }
-        html += '</tbody></table></div><p><br></p>';
-
-        document.execCommand('insertHTML', false, html);
-        this.attachEdgeButtonsToTables();
+    togglePalette() {
+        if (this.palette.classList.contains('hidden')) this.showPalette();
+        else this.hidePalette();
     }
 
-    attachEdgeButtonsToTables() {
-        const wrappers = this.editor.querySelectorAll('.omni-table-wrapper');
-        wrappers.forEach((wrapper) => {
-            if (wrapper.querySelector('.btn-add-col-edge')) return;
-
-            const btnAddCol = document.createElement('button');
-            btnAddCol.type = 'button';
-            btnAddCol.className = 'table-edge-btn btn-add-col-edge';
-            btnAddCol.title = 'Thêm cột';
-            btnAddCol.innerHTML = '<i class="fa-solid fa-plus"></i>';
-            btnAddCol.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const table = wrapper.querySelector('table');
-                if (table) this.addColumnToTable(table);
-            });
-
-            const btnAddRow = document.createElement('button');
-            btnAddRow.type = 'button';
-            btnAddRow.className = 'table-edge-btn btn-add-row-edge';
-            btnAddRow.title = 'Thêm dòng';
-            btnAddRow.innerHTML = '<i class="fa-solid fa-plus"></i>';
-            btnAddRow.addEventListener('click', (e) => {
-                e.stopPropagation();
-                const table = wrapper.querySelector('table');
-                if (table) this.addRowToTable(table);
-            });
-
-            wrapper.appendChild(btnAddCol);
-            wrapper.appendChild(btnAddRow);
-        });
+    showPalette() {
+        const rect = this.btnFormula.getBoundingClientRect();
+        this.palette.style.top = `${rect.bottom + window.scrollY + 6}px`;
+        this.palette.style.left = `${rect.left + window.scrollX}px`;
+        this.palette.classList.remove('hidden');
+        this.palette.style.display = 'grid';
     }
 
-    addRowToTable(table) {
-        if (!table) return;
-        const colsCount = table.rows[0] ? table.rows[0].cells.length : 1;
-        const newRow = table.insertRow();
-        for (let i = 0; i < colsCount; i++) {
-            const cell = newRow.insertCell();
-            cell.innerHTML = '<br>';
-        }
-        if (window.scheduleAutosave) window.scheduleAutosave();
-    }
-
-    addColumnToTable(table) {
-        if (!table) return;
-        for (let r = 0; r < table.rows.length; r++) {
-            const cell = table.rows[r].insertCell();
-            cell.innerHTML = '<br>';
-        }
-        if (window.scheduleAutosave) window.scheduleAutosave();
-    }
-
-    initTableContextMenuEvents() {
-        const btnAutoFit = document.getElementById('tbl-btn-autofit');
-        const btnAlignLeft = document.getElementById('tbl-btn-align-left');
-        const btnAlignCenter = document.getElementById('tbl-btn-align-center');
-        const btnAlignRight = document.getElementById('tbl-btn-align-right');
-        const colorShading = document.getElementById('tbl-cell-shading');
-        const btnMerge = document.getElementById('tbl-btn-merge');
-        const btnSplit = document.getElementById('tbl-btn-split');
-        const btnAddRow = document.getElementById('tbl-btn-add-row');
-        const btnAddCol = document.getElementById('tbl-btn-add-col');
-        const btnDelTable = document.getElementById('tbl-btn-del-table');
-
-        if (btnAutoFit) {
-            btnAutoFit.addEventListener('click', () => {
-                if (!this.activeTable) return;
-                this.activeTable.classList.toggle('autofit');
-            });
-        }
-
-        [
-            { btn: btnAlignLeft, align: 'left' },
-            { btn: btnAlignCenter, align: 'center' },
-            { btn: btnAlignRight, align: 'right' }
-        ].forEach(({ btn, align }) => {
-            if (btn) {
-                btn.addEventListener('click', () => {
-                    this.selectedCells.forEach((cell) => cell.style.textAlign = align);
-                });
-            }
-        });
-
-        if (colorShading) {
-            colorShading.addEventListener('input', (e) => {
-                const bg = e.target.value;
-                this.selectedCells.forEach((cell) => cell.style.backgroundColor = bg);
-            });
-        }
-
-        if (btnMerge) {
-            btnMerge.addEventListener('click', () => this.mergeSelectedCells());
-        }
-
-        if (btnSplit) {
-            btnSplit.addEventListener('click', () => this.splitSelectedCell());
-        }
-
-        if (btnAddRow) {
-            btnAddRow.addEventListener('click', () => this.addRowToTable(this.activeTable));
-        }
-
-        if (btnAddCol) {
-            btnAddCol.addEventListener('click', () => this.addColumnToTable(this.activeTable));
-        }
-
-        if (btnDelTable) {
-            btnDelTable.addEventListener('click', () => {
-                if (this.activeTable) {
-                    const wrapper = this.activeTable.closest('.omni-table-wrapper');
-                    if (wrapper) wrapper.remove();
-                    else this.activeTable.remove();
-                    this.hideTableContextMenu();
-                }
-            });
-        }
-    }
-
-    mergeSelectedCells() {
-        if (this.selectedCells.length < 2) return;
-        const first = this.selectedCells[0];
-        let combinedText = '';
-
-        this.selectedCells.forEach((cell, idx) => {
-            combinedText += (cell.innerText.trim() ? cell.innerText.trim() + ' ' : '');
-            if (idx > 0) cell.remove();
-        });
-
-        first.colSpan = this.selectedCells.length;
-        first.innerHTML = combinedText || '<br>';
-        this.clearCellSelections();
-    }
-
-    splitSelectedCell() {
-        if (this.selectedCells.length !== 1) return;
-        const cell = this.selectedCells[0];
-        if (cell.colSpan > 1) {
-            const span = cell.colSpan;
-            cell.colSpan = 1;
-            const row = cell.parentElement;
-            for (let i = 1; i < span; i++) {
-                const newCell = row.insertCell(cell.cellIndex + 1);
-                newCell.innerHTML = '<br>';
-            }
-        }
-    }
-
-    positionTableContextMenu(table) {
-        if (!this.tableContextMenu) return;
-        const rect = table.getBoundingClientRect();
-        this.tableContextMenu.style.top = `${rect.top - 46 + window.scrollY}px`;
-        this.tableContextMenu.style.left = `${rect.left + window.scrollX}px`;
-        this.tableContextMenu.classList.remove('hidden');
-    }
-
-    hideTableContextMenu() {
-        if (this.tableContextMenu) this.tableContextMenu.classList.add('hidden');
-        this.clearCellSelections();
-        this.activeTable = null;
-    }
-
-    clearCellSelections() {
-        this.selectedCells.forEach((c) => c.classList.remove('selected-cell'));
-        this.selectedCells = [];
+    hidePalette() {
+        this.palette.classList.add('hidden');
+        this.palette.style.display = 'none';
     }
 
     exec(command, value = null) {
@@ -360,25 +158,33 @@ class RichTextEditor {
 
     setFontFamily(fontName) {
         const selection = window.getSelection();
+        
+        // Trường hợp 1: Có văn bản được bôi đen -> Đổi font phần được chọn
         if (selection && selection.rangeCount > 0 && !selection.getRangeAt(0).collapsed) {
             this.exec('fontName', fontName);
             return;
         }
 
+        // Trường hợp 2: Không bôi đen -> Áp dụng font trực tiếp cho vị trí/đoạn gõ tiếp theo
         this.exec('fontName', fontName);
         this.editor.style.fontFamily = fontName;
 
         if (selection && selection.rangeCount > 0) {
             let node = selection.getRangeAt(0).commonAncestorContainer;
             if (node.nodeType === 3) node = node.parentNode;
-            if (node && node !== this.editor) node.style.fontFamily = fontName;
+            
+            if (node && node !== this.editor) {
+                node.style.fontFamily = fontName;
+            }
         }
+
         this.editor.focus();
     }
 
     setFontSize(pixelSize) {
         const selection = window.getSelection();
         if (!selection.rangeCount) return;
+
         const range = selection.getRangeAt(0);
         if (range.collapsed) return;
 
@@ -389,27 +195,60 @@ class RichTextEditor {
         this.editor.focus();
     }
 
+    setLineHeight(height) {
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+
+        let node = selection.getRangeAt(0).commonAncestorContainer;
+        if (node.nodeType === 3) node = node.parentNode;
+
+        while (node && node !== this.editor) {
+            if (node.nodeName === 'P' || node.nodeName === 'DIV' || node.nodeName === 'LI') {
+                node.style.lineHeight = height;
+                break;
+            }
+            node = node.parentNode;
+        }
+
+        if (node === this.editor) {
+            this.editor.style.lineHeight = height;
+        }
+    }
+
     updateActiveStates() {
         if (document.activeElement !== this.editor) return;
 
-        if (this.btnBold) this.btnBold.classList.toggle('active', document.queryCommandState('bold'));
-        if (this.btnItalic) this.btnItalic.classList.toggle('active', document.queryCommandState('italic'));
-        if (this.btnUnderline) this.btnUnderline.classList.toggle('active', document.queryCommandState('underline'));
-        if (this.btnStrikethrough) this.btnStrikethrough.classList.toggle('active', document.queryCommandState('strikeThrough'));
+        this.btnBold.classList.toggle('active', document.queryCommandState('bold'));
+        this.btnItalic.classList.toggle('active', document.queryCommandState('italic'));
+        this.btnUnderline.classList.toggle('active', document.queryCommandState('underline'));
+        this.btnStrikethrough.classList.toggle('active', document.queryCommandState('strikeThrough'));
 
-        if (this.btnAlignLeft) this.btnAlignLeft.classList.toggle('active', document.queryCommandState('justifyLeft'));
-        if (this.btnAlignCenter) this.btnAlignCenter.classList.toggle('active', document.queryCommandState('justifyCenter'));
-        if (this.btnAlignRight) this.btnAlignRight.classList.toggle('active', document.queryCommandState('justifyRight'));
-        if (this.btnAlignJustify) this.btnAlignJustify.classList.toggle('active', document.queryCommandState('justifyFull'));
+        this.btnAlignLeft.classList.toggle('active', document.queryCommandState('justifyLeft'));
+        this.btnAlignCenter.classList.toggle('active', document.queryCommandState('justifyCenter'));
+        this.btnAlignRight.classList.toggle('active', document.queryCommandState('justifyRight'));
+        this.btnAlignJustify.classList.toggle('active', document.queryCommandState('justifyFull'));
     }
 
-    getContent() { return this.editor.innerHTML; }
+    insertTextAtCursor(text) {
+        this.editor.focus();
+        this.exec('insertText', text);
+    }
+
+    getContent() {
+        return this.editor.innerHTML;
+    }
+
     setContent(html) {
         this.editor.innerHTML = html;
-        this.attachEdgeButtonsToTables();
     }
-    getPlainText() { return this.editor.innerText || this.editor.textContent || ''; }
-    clear() { this.editor.innerHTML = ''; }
+
+    getPlainText() {
+        return this.editor.innerText || this.editor.textContent || '';
+    }
+
+    clear() {
+        this.editor.innerHTML = '';
+    }
 }
 
 // Global Export Engine Instance
