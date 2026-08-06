@@ -80,7 +80,6 @@
         }
         #pdf-zoom-fit.active-fit { color: #0d9488; background: rgba(13, 148, 136, 0.14); }
 
-        /* --- SUB-MENU CHỌN HÌNH GỌN GÀNG --- */
         .shape-dropdown-wrapper {
             position: relative;
             display: inline-block;
@@ -201,7 +200,7 @@
                     <canvas id="pdf-draw-canvas"></canvas>
                 </div>
 
-                <!-- Pen Dock PDF với nút Bút dạ quang (Highlighter) -->
+                <!-- Pen Dock PDF -->
                 <div class="pen-dock" id="pen-dock-pdf">
                     <button type="button" class="pen-fab" id="pen-fab-pdf" title="Bút viết trực tiếp lên PDF">
                         <i class="fa-solid fa-pen"></i>
@@ -214,7 +213,6 @@
                             <button type="button" class="tool-btn" data-tool="line" title="Đường thẳng"><i class="fa-solid fa-slash"></i></button>
                             <button type="button" class="tool-btn" data-tool="arrow" title="Mũi tên"><i class="fa-solid fa-arrow-right"></i></button>
 
-                            <!-- Nút gộp Hình học -->
                             <div class="shape-dropdown-wrapper">
                                 <button type="button" class="tool-btn btn-shape-toggle" title="Chọn hình học"><i class="fa-solid fa-shapes"></i></button>
                                 <div class="shape-submenu">
@@ -260,7 +258,8 @@
         <!-- Right Column: Note & Canvas Workspace -->
         <section id="workspace" class="split-pane">
             <div class="workspace-toolbars">
-                <div id="editor-toolbar" class="toolbar-panel active">
+                <!-- SINGLE ROW TOOLBAR (WORD STYLE + DROPDOWN AT END) -->
+                <div id="editor-toolbar" class="toolbar-panel active toolbar-single-row">
                     <select id="font-family" class="tool-select" title="Phông chữ">
                         <option value="Inter" selected>Inter · Hiện đại</option>
                         <option value="Roboto">Roboto · Tiêu chuẩn</option>
@@ -305,23 +304,33 @@
                         </label>
                     </div>
 
-                    <div class="tool-group">
-                        <button class="tool-btn" id="btn-bullet-list" title="Danh sách dấu chấm"><i class="fa-solid fa-list-ul"></i></button>
-                        <button class="tool-btn" id="btn-number-list" title="Danh sách số"><i class="fa-solid fa-list-ol"></i></button>
-                        <button class="tool-btn" id="btn-formula" title="Chèn ký hiệu khoa học"><i class="fa-solid fa-square-root-variable"></i></button>
-                    </div>
-
-                    <div class="tool-group">
-                        <select id="line-height" class="tool-select" title="Giãn dòng">
-                            <option value="1.2">Dòng 1.2</option>
-                            <option value="1.5" selected>Dòng 1.5</option>
-                            <option value="2.0">Dòng 2.0</option>
-                        </select>
-                    </div>
-
-                    <div class="tool-group">
+                    <div class="tool-group" style="margin-left: auto;">
                         <button class="tool-btn" id="btn-undo-text" title="Hoàn tác (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
                         <button class="tool-btn" id="btn-redo-text" title="Làm lại (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i></button>
+                    </div>
+
+                    <!-- DROPDOWN TOGGLE ICON AT FAR RIGHT -->
+                    <div class="more-dropdown-wrapper">
+                        <button type="button" class="tool-btn btn-more-toggle" id="btn-more-toggle" title="Công cụ mở rộng">
+                            <i class="fa-solid fa-chevron-down"></i>
+                        </button>
+
+                        <div class="more-popover-menu" id="more-popover-menu">
+                            <div class="popover-section">
+                                <span class="popover-subheader">INSERT</span>
+                                <div class="popover-item table-menu-item" id="menu-item-table">
+                                    <i class="fa-solid fa-table"></i>
+                                    <span>Bảng (Table)</span>
+                                    <i class="fa-solid fa-chevron-right arrow-right"></i>
+
+                                    <!-- GRID SELECTOR 10x10 -->
+                                    <div class="table-grid-popover" id="table-grid-popover">
+                                        <div class="grid-status" id="table-grid-status">1 x 1 Table</div>
+                                        <div class="grid-container" id="table-grid-container"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -331,7 +340,28 @@
                 <div id="text-editor" contenteditable="true" spellcheck="false" placeholder="Nhập nội dung ghi chép tại đây…"></div>
                 <canvas id="note-canvas"></canvas>
 
-                <!-- Pen Dock Ghi chú với nút Bút dạ quang (Highlighter) -->
+                <!-- CONTEXT MENU FOR TABLE (Xuất hiện khi click/hover vào Bảng) -->
+                <div id="table-context-menu" class="table-context-menu hidden">
+                    <button type="button" id="tbl-btn-autofit" title="Tự động chỉnh độ rộng cột"><i class="fa-solid fa-arrows-left-right"></i> AutoFit</button>
+                    <div class="ctx-divider"></div>
+                    <button type="button" id="tbl-btn-align-left" title="Căn trái nội dung ô"><i class="fa-solid fa-align-left"></i></button>
+                    <button type="button" id="tbl-btn-align-center" title="Căn giữa nội dung ô"><i class="fa-solid fa-align-center"></i></button>
+                    <button type="button" id="tbl-btn-align-right" title="Căn phải nội dung ô"><i class="fa-solid fa-align-right"></i></button>
+                    <div class="ctx-divider"></div>
+                    <label class="color-picker-wrapper ctx-color-picker" title="Tô màu nền ô / hàng / cột">
+                        <i class="fa-solid fa-fill-drip"></i>
+                        <input type="color" id="tbl-cell-shading" value="#ffffff">
+                    </label>
+                    <div class="ctx-divider"></div>
+                    <button type="button" id="tbl-btn-merge" title="Gộp các ô được chọn"><i class="fa-solid fa-object-group"></i> Gộp ô</button>
+                    <button type="button" id="tbl-btn-split" title="Tách ô"><i class="fa-solid fa-object-ungroup"></i> Tách ô</button>
+                    <div class="ctx-divider"></div>
+                    <button type="button" id="tbl-btn-add-row" title="Thêm dòng bên dưới"><i class="fa-solid fa-plus"></i> Dòng</button>
+                    <button type="button" id="tbl-btn-add-col" title="Thêm cột bên phải"><i class="fa-solid fa-plus"></i> Cột</button>
+                    <button type="button" class="danger" id="tbl-btn-del-table" title="Xóa toàn bộ bảng"><i class="fa-solid fa-trash-can"></i></button>
+                </div>
+
+                <!-- Pen Dock Ghi chú -->
                 <div class="pen-dock" id="pen-dock-note">
                     <button type="button" class="pen-fab" id="pen-fab-note" title="Bút viết tay">
                         <i class="fa-solid fa-pen"></i>
@@ -344,7 +374,6 @@
                             <button type="button" class="tool-btn" data-tool="line" title="Đường thẳng"><i class="fa-solid fa-slash"></i></button>
                             <button type="button" class="tool-btn" data-tool="arrow" title="Mũi tên"><i class="fa-solid fa-arrow-right"></i></button>
 
-                            <!-- Nút gộp Hình học -->
                             <div class="shape-dropdown-wrapper">
                                 <button type="button" class="tool-btn btn-shape-toggle" title="Chọn hình học"><i class="fa-solid fa-shapes"></i></button>
                                 <div class="shape-submenu">
