@@ -443,8 +443,8 @@ body {
 .workspace-toolbars {
     background-color: var(--paper-panel);
     border-bottom: 1px solid var(--border-color);
-    padding: 6px 14px;
-    min-height: 48px;
+    padding: 8px 14px;
+    min-height: 52px;
     flex-shrink: 0;
 }
 
@@ -457,17 +457,12 @@ body {
 
 .toolbar-panel.active { display: flex; }
 
-.toolbar-single-row {
-    flex-wrap: nowrap !important;
-    width: 100%;
-}
-
 .tool-group {
     display: flex;
     align-items: center;
     gap: 3px;
     background-color: var(--paper-sunken);
-    padding: 3px;
+    padding: 4px;
     border-radius: var(--radius-full);
     border: 1px solid var(--border-color);
 }
@@ -518,7 +513,7 @@ button.active {
 .tool-btn.danger:hover { background-color: var(--signal-red); color: #fff; }
 
 .tool-select {
-    padding: 5px 10px;
+    padding: 6px 12px;
     border-radius: var(--radius-full);
     border: 1px solid var(--border-color);
     background-color: var(--paper-panel);
@@ -528,7 +523,7 @@ button.active {
     outline: none;
     cursor: pointer;
 }
-.tool-select:focus-visible, .tool-btn:focus-visible, .action-btn:focus-visible {
+.tool-select:focus-visible, .tool-btn:focus-visible, .action-btn:focus-visible, .mode-btn:focus-visible {
     outline: 2px solid var(--accent);
     outline-offset: 2px;
 }
@@ -536,8 +531,8 @@ button.active {
 .color-picker-wrapper {
     display: flex;
     align-items: center;
-    gap: 4px;
-    padding: 0 6px;
+    gap: 6px;
+    padding: 0 8px;
     cursor: pointer;
     font-size: 12.5px;
     color: var(--text-muted);
@@ -547,8 +542,8 @@ button.active {
     -webkit-appearance: none;
     appearance: none;
     border: none;
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     border-radius: 50%;
     cursor: pointer;
     background: transparent;
@@ -558,206 +553,6 @@ button.active {
     border: 1px solid var(--border-color);
     border-radius: 50%;
 }
-
-/* --------------------------------------------------------------------------
-   MORE DROPDOWN & TABLE SELECTOR STYLING
-   -------------------------------------------------------------------------- */
-.more-dropdown-wrapper {
-    position: relative;
-    display: inline-block;
-}
-
-.btn-more-toggle {
-    background-color: var(--paper-sunken);
-    border: 1px solid var(--border-color);
-}
-
-.more-popover-menu {
-    display: none;
-    position: absolute;
-    top: 100%;
-    right: 0;
-    margin-top: 8px;
-    width: 220px;
-    background: var(--paper-panel);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg);
-    padding: 10px;
-    z-index: 600;
-}
-.more-popover-menu.open {
-    display: block;
-    animation: pop-in 0.15s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-.popover-subheader {
-    display: block;
-    font-family: var(--font-mono);
-    font-size: 10px;
-    font-weight: 700;
-    color: var(--text-faint);
-    letter-spacing: 0.5px;
-    margin-bottom: 6px;
-    padding-left: 4px;
-}
-
-.popover-item {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 8px 10px;
-    border-radius: var(--radius-sm);
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-ink);
-    cursor: pointer;
-    position: relative;
-    transition: var(--transition);
-}
-.popover-item:hover {
-    background-color: var(--accent-soft);
-    color: var(--accent);
-}
-.popover-item .arrow-right {
-    margin-left: auto;
-    font-size: 11px;
-    color: var(--text-faint);
-}
-
-/* GRID SELECTOR 10x10 POPOVER */
-.table-grid-popover {
-    display: none;
-    position: absolute;
-    top: 0;
-    right: 100%;
-    margin-right: 8px;
-    background: var(--paper-panel);
-    border: 1px solid var(--border-color);
-    border-radius: var(--radius-md);
-    box-shadow: var(--shadow-lg);
-    padding: 10px;
-}
-.table-menu-item:hover .table-grid-popover {
-    display: block;
-}
-
-.grid-status {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    text-align: center;
-    color: var(--text-muted);
-    margin-bottom: 8px;
-}
-
-.grid-container {
-    display: grid;
-    grid-template-columns: repeat(10, 16px);
-    grid-template-rows: repeat(10, 16px);
-    gap: 3px;
-}
-
-.grid-cell {
-    width: 16px;
-    height: 16px;
-    border: 1px solid var(--border-color);
-    border-radius: 2px;
-    background-color: var(--paper-sunken);
-    cursor: pointer;
-}
-.grid-cell.active {
-    background-color: var(--accent);
-    border-color: var(--accent-hover);
-}
-
-/* TABLE STYLING IN EDITOR */
-.omni-table-wrapper {
-    position: relative;
-    display: inline-block;
-    margin: 12px 0;
-    max-width: 100%;
-}
-
-.omni-table {
-    border-collapse: collapse;
-    width: 100%;
-    min-width: 200px;
-    background: var(--paper-panel);
-    border: 1px solid var(--border-color);
-}
-
-.omni-table td, .omni-table th {
-    border: 1px solid var(--border-color);
-    padding: 8px 12px;
-    min-width: 40px;
-    height: 32px;
-    outline: none;
-    vertical-align: top;
-}
-
-.omni-table td.selected-cell {
-    background-color: var(--accent-soft) !important;
-    outline: 2px solid var(--accent);
-}
-
-.omni-table.autofit {
-    width: auto !important;
-}
-
-/* TABLE EDGE ADD BUTTONS (+) */
-.table-edge-btn {
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background: var(--accent);
-    color: var(--ink-950);
-    border: none;
-    font-size: 11px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: var(--shadow-sm);
-    opacity: 0;
-    transition: opacity 0.15s ease;
-}
-.omni-table-wrapper:hover .table-edge-btn { opacity: 1; }
-
-.btn-add-col-edge { top: 50%; right: -26px; transform: translateY(-50%); }
-.btn-add-row-edge { bottom: -26px; left: 50%; transform: translateX(-50%); }
-
-/* CONTEXT MENU FOR TABLE */
-.table-context-menu {
-    position: absolute;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: var(--ink-900);
-    color: #fff;
-    padding: 4px 8px;
-    border-radius: var(--radius-full);
-    box-shadow: var(--shadow-lg);
-    z-index: 700;
-}
-.table-context-menu.hidden { display: none; }
-
-.table-context-menu button {
-    background: transparent;
-    border: none;
-    color: #dbe6f5;
-    font-size: 12px;
-    font-family: var(--font-body);
-    padding: 5px 8px;
-    border-radius: var(--radius-sm);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-}
-.table-context-menu button:hover { background: rgba(255, 255, 255, 0.15); color: #fff; }
-.table-context-menu button.danger:hover { background: var(--signal-red); }
-.ctx-divider { width: 1px; height: 16px; background: var(--ink-700); margin: 0 2px; }
 
 /* --------------------------------------------------------------------------
    PEN DOCK
