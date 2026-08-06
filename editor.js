@@ -39,7 +39,7 @@ class RichTextEditor {
 
     initEvents() {
         // Executive Commands Execution
-        this.fontFamilySelect.addEventListener('change', (e) => this.exec('fontName', e.target.value));
+        this.fontFamilySelect.addEventListener('change', (e) => this.setFontFamily(e.target.value));
         this.fontSizeSelect.addEventListener('change', (e) => this.setFontSize(e.target.value));
 
         this.btnBold.addEventListener('click', () => this.exec('bold'));
@@ -53,10 +53,6 @@ class RichTextEditor {
         this.btnAlignJustify.addEventListener('click', () => this.exec('justifyFull'));
 
         // Ngăn các nút định dạng cướp focus/selection của editor khi click.
-        // Nếu không có dòng này, mỗi lần bấm B/I/U/S trình duyệt sẽ làm mất
-        // vùng chọn (hoặc trạng thái gõ chữ đang bật) đang có trong editor,
-        // khiến các định dạng không cộng dồn được với nhau (chỉ giữ lại nút
-        // bấm sau cùng thay vì bật được cả B + I + U cùng lúc như Word).
         [
             this.btnBold, this.btnItalic, this.btnUnderline, this.btnStrikethrough,
             this.btnAlignLeft, this.btnAlignCenter, this.btnAlignRight, this.btnAlignJustify,
@@ -78,8 +74,7 @@ class RichTextEditor {
         this.btnUndo.addEventListener('click', () => this.exec('undo'));
         this.btnRedo.addEventListener('click', () => this.exec('redo'));
 
-        // Explicit keyboard shortcuts (kept in addition to native contenteditable behaviour
-        // for consistency across browsers)
+        // Keyboard shortcuts
         this.editor.addEventListener('keydown', (e) => {
             const ctrl = e.ctrlKey || e.metaKey;
             if (!ctrl) return;
@@ -161,8 +156,32 @@ class RichTextEditor {
         this.updateActiveStates();
     }
 
+    setFontFamily(fontName) {
+        const selection = window.getSelection();
+        
+        // Trường hợp 1: Có văn bản được bôi đen -> Đổi font phần được chọn
+        if (selection && selection.rangeCount > 0 && !selection.getRangeAt(0).collapsed) {
+            this.exec('fontName', fontName);
+            return;
+        }
+
+        // Trường hợp 2: Không bôi đen -> Áp dụng font trực tiếp cho vị trí/đoạn gõ tiếp theo
+        this.exec('fontName', fontName);
+        this.editor.style.fontFamily = fontName;
+
+        if (selection && selection.rangeCount > 0) {
+            let node = selection.getRangeAt(0).commonAncestorContainer;
+            if (node.nodeType === 3) node = node.parentNode;
+            
+            if (node && node !== this.editor) {
+                node.style.fontFamily = fontName;
+            }
+        }
+
+        this.editor.focus();
+    }
+
     setFontSize(pixelSize) {
-        // Custom Font Size Applying Span Wrappers
         const selection = window.getSelection();
         if (!selection.rangeCount) return;
 
