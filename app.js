@@ -4,7 +4,7 @@
  * Theme, Resizer, và lưu đồng bộ lên Supabase.
  */
 
-// ⚠️ THÔNG TIN SUPABASE:
+// ⚠️ ĐIỀN THÔNG TIN SUPABASE CỦA BẠN VÀO ĐÂY:
 const SUPABASE_URL = 'https://vnwqhacajbrlmtoixuzy.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZud3FoYWNhamJybG10b2l4dXp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5OTU2OTEsImV4cCI6MjEwMTU3MTY5MX0.OQZVSpBBYRqcpD-cf7FkOv2iDX20zU5_zZaz1KJuXTA';
 
@@ -101,9 +101,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     let scale = 1.2;
     let currentUploadedPdfFile = null;
 
-    // Chế độ "Vừa khung": tự tính lại scale mỗi khi khung biến đổi
+    // Chế độ "Vừa khung": khi bật (mặc định), kích thước PDF tự tính lại theo
+    // bề rộng cột PDF mỗi khi khung được kéo giãn. Khi người dùng tự chỉnh
+    // zoom (thanh trượt / nút +-), chế độ này tắt để giữ nguyên mức zoom họ chọn.
     let autoFitEnabled = true;
-    const PDF_FIT_PADDING = 48;
+    const PDF_FIT_PADDING = 48; // khoảng đệm ước lượng quanh trang PDF trong khung nhìn
 
     const pdfCanvas = document.getElementById('pdf-canvas');
     const pdfCtx = pdfCanvas ? pdfCanvas.getContext('2d') : null;
@@ -144,6 +146,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     // In-memory per-page store for direct PDF annotations (pageNum -> dataURL).
+    // Reset whenever a new document is loaded. (Chỉ giữ trong phiên làm việc,
+    // giống hành vi bản gốc — không đồng bộ lên Supabase.)
     let pdfDrawings = new Map();
 
     const savePdfPageDrawing = (num) => {
@@ -164,8 +168,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const resizer = document.getElementById('resizer');
     const pdfPane = document.getElementById('pdf-container');
     let isResizing = false;
+
     let resizeRenderQueued = false;
 
+    // Trong lúc kéo thanh chia, nếu "Vừa khung" đang bật thì tính lại kích
+    // thước PDF theo bề rộng cột mới — throttle bằng rAF để mượt, không giật.
     const requestFitRerenderOnDrag = () => {
         if (!autoFitEnabled || !pdfDoc || resizeRenderQueued) return;
         resizeRenderQueued = true;
@@ -198,6 +205,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (isResizing) {
                 isResizing = false;
                 document.body.style.cursor = 'default';
+                // Render lại lần cuối ở kích thước chính xác sau khi thả chuột
                 if (autoFitEnabled && pdfDoc && typeof queueRenderPage === 'function') {
                     queueRenderPage(pageNum);
                 }
@@ -205,6 +213,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // Cửa sổ trình duyệt đổi kích thước cũng cần tính lại "Vừa khung"
     let windowResizeTimer = null;
     window.addEventListener('resize', () => {
         if (!autoFitEnabled || !pdfDoc) return;
@@ -215,7 +224,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     });
 
     // ----------------------------------------------------------------------
-    // 3B. VIEW MODE SWITCHER
+    // 3B. VIEW MODE SWITCHER — Song song / Chỉ PDF / Chỉ Ghi chú
+    //     + nút "Mở nhanh" nổi để bật lại khung còn lại khi đang ở chế độ đơn.
+    //     Trạng thái được ghi nhớ trong localStorage giữa các phiên làm việc.
     // ----------------------------------------------------------------------
     const mainContainer = document.querySelector('.main-container');
     const viewModeButtons = document.querySelectorAll('.viewmode-btn');
@@ -224,7 +235,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const quickSwitchIcon = quickSwitchBtn ? quickSwitchBtn.querySelector('i') : null;
 
     const VIEW_MODES = ['split', 'pdf', 'note'];
-    let lastSplitWidth = null;
+    let lastSplitWidth = null; // ghi nhớ tỉ lệ cột PDF trước khi rời chế độ song song
 
     const applyViewMode = (mode, { persist = true } = {}) => {
         if (!mainContainer) return;
@@ -232,6 +243,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const currentMode = mainContainer.getAttribute('data-view-mode');
 
+        // Trước khi rời chế độ song song, lưu lại tỉ lệ cột hiện tại để khôi phục sau
         if (currentMode === 'split' && mode !== 'split' && pdfPane && pdfPane.style.width) {
             lastSplitWidth = pdfPane.style.width;
         }
@@ -242,10 +254,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             btn.classList.toggle('active', btn.dataset.mode === mode);
         });
 
+        // Khôi phục / gỡ tỉ lệ cột theo chế độ
         if (pdfPane) {
             pdfPane.style.width = (mode === 'split') ? (lastSplitWidth || '50%') : '';
         }
 
+        // Nút "Mở nhanh" — chỉ hiển thị khi đang ở chế độ xem đơn (pdf hoặc note)
         if (quickSwitchBtn) {
             if (mode === 'pdf') {
                 quickSwitchBtn.classList.remove('hidden');
@@ -266,6 +280,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (persist) localStorage.setItem('omnilab_view_mode', mode);
 
+        // Bố cục vừa đổi kích thước — vẽ lại canvas/PDF cho khớp khung mới (nếu có)
         requestAnimationFrame(() => {
             if (window.canvasEngine && typeof window.canvasEngine.resizeToContainer === 'function') {
                 window.canvasEngine.resizeToContainer();
@@ -288,12 +303,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // Khôi phục chế độ xem đã lưu từ phiên trước (mặc định: song song)
     const savedViewMode = localStorage.getItem('omnilab_view_mode') || 'split';
     applyViewMode(savedViewMode, { persist: false });
 
     // ----------------------------------------------------------------------
     // 4. PDF RENDER ENGINE
     // ----------------------------------------------------------------------
+    // Tính scale để trang PDF vừa khít bề rộng khung nhìn hiện tại (cột PDF).
     const computeFitScale = (page) => {
         if (!pdfRenderWrapper) return scale;
         const wrapperWidth = pdfRenderWrapper.clientWidth;
@@ -351,7 +368,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         pdfjsLib.getDocument({ data: buffer }).promise.then((pdf) => {
             pdfDoc = pdf;
-            pdfDrawings = new Map();
+            pdfDrawings = new Map(); // fresh document — discard previous page annotations
             const pageCountLabel = document.getElementById('pdf-page-count');
             if (pageCountLabel) pageCountLabel.textContent = pdf.numPages;
 
@@ -392,6 +409,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     };
 
+    // LẮNG NGHE NÚT "MỞ PDF" TỪ MÁY TÍNH
     const pdfUploadInput = document.getElementById('pdf-upload');
     if (pdfUploadInput) {
         pdfUploadInput.addEventListener('change', (e) => {
@@ -414,6 +432,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // Chuyển trang & Zoom PDF (lưu nét vẽ trang hiện tại trước khi chuyển)
     const btnPrev = document.getElementById('pdf-prev');
     const btnNext = document.getElementById('pdf-next');
     if (btnPrev) {
@@ -439,6 +458,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const zoomSlider = document.getElementById('pdf-zoom-slider');
     const btnZoomFit = document.getElementById('pdf-zoom-fit');
 
+    // Đồng bộ nhãn %, thanh trượt và trạng thái nút "Vừa khung" với `scale` hiện tại
     function updateZoomUI() {
         const pct = Math.round(scale * 100);
         if (zoomLevelLabel) zoomLevelLabel.textContent = `${pct}%`;
@@ -447,6 +467,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     window.updateZoomUI = updateZoomUI;
 
+    // Đặt một mức zoom cụ thể (kéo thanh trượt, bấm nút, hoặc lăn chuột) —
+    // luôn tắt "Vừa khung" vì đây là lựa chọn kích thước thủ công của người dùng.
     function setManualScale(newScale) {
         if (!pdfDoc) return;
         savePdfPageDrawing(pageNum);
@@ -456,9 +478,14 @@ document.addEventListener('DOMContentLoaded', async () => {
         queueRenderPage(pageNum);
     }
 
-    if (btnZoomIn) btnZoomIn.onclick = () => setManualScale(scale + 0.1);
-    if (btnZoomOut) btnZoomOut.onclick = () => setManualScale(scale - 0.1);
+    if (btnZoomIn) {
+        btnZoomIn.onclick = () => setManualScale(scale + 0.1);
+    }
+    if (btnZoomOut) {
+        btnZoomOut.onclick = () => setManualScale(scale - 0.1);
+    }
     if (zoomSlider) {
+        // 'input' bắn liên tục khi kéo -> phóng/thu tự do theo đúng vị trí con trượt
         zoomSlider.addEventListener('input', () => {
             setManualScale(parseInt(zoomSlider.value, 10) / 100);
         });
@@ -472,15 +499,17 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
 
+    // Ctrl/Cmd + lăn chuột trên trang PDF để phóng to/thu nhỏ tự do, không theo bước cố định
     if (pdfRenderWrapper) {
         pdfRenderWrapper.addEventListener('wheel', (e) => {
             if (!(e.ctrlKey || e.metaKey) || !pdfDoc) return;
             e.preventDefault();
-            const delta = -e.deltaY * 0.0015;
+            const delta = -e.deltaY * 0.0015; // hệ số mượt, tỉ lệ theo tốc độ lăn chuột
             setManualScale(scale + scale * delta);
         }, { passive: false });
     }
 
+    // Điều hướng PDF bằng phím mũi tên (chỉ khi không gõ trong ô ghi chú)
     document.addEventListener('keydown', (e) => {
         const isTyping = document.activeElement && document.activeElement.id === 'text-editor';
         if (isTyping || !pdfDoc) return;
@@ -509,6 +538,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // Make Casio Modal Draggable (mouse + touch)
     let isDraggingCasio = false;
     let casioOffsetX = 0, casioOffsetY = 0;
 
@@ -541,6 +571,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         document.addEventListener('touchend', () => isDraggingCasio = false);
     }
 
+    /**
+     * Tiny recursive-descent parser/evaluator for arithmetic expressions.
+     * Supports: + - * / ^ () unary minus, sin cos tan log ln sqrt, pi, e, n!, %
+     * Deliberately avoids eval()/Function() on user input.
+     */
     class ExpressionError extends Error {}
 
     function evaluateExpression(input) {
@@ -738,8 +773,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     });
 
+    // Keyboard input support while calculator is open
     if (casioDisplay) casioDisplay.addEventListener('keydown', (e) => e.preventDefault());
 
+    // Copy Result to Rich Text Editor
     const btnCopyCasio = document.getElementById('btn-copy-casio');
     if (btnCopyCasio) {
         btnCopyCasio.addEventListener('click', () => {
@@ -768,6 +805,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
     const closeGraphDialog = () => { if (graphModal) graphModal.classList.add('hidden'); };
 
+    // Called by DrawEngine when its "Vẽ đồ thị" pen-dock button is clicked
     window.onGraphToolClick = (engine) => {
         graphTargetEngine = engine;
         openGraphDialog();
@@ -823,10 +861,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             noteTitleText.textContent = currentNoteTitle;
         }
 
+        // Tải lại file PDF nếu có
         if (file.pdf_url) {
             loadPdfFromUrl(file.pdf_url, "Tài liệu PDF", file.last_page || 1);
         }
 
+        // Tải lại Text & Nét vẽ
         if (file.text_data && window.richTextEditor) {
             window.richTextEditor.setContent(file.text_data);
         }
@@ -844,6 +884,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         let pdfPublicUrl = null;
 
+        // Upload PDF nếu người dùng vừa nạp file mới
         if (currentUploadedPdfFile) {
             const filePath = `${user.id}/${Date.now()}_${currentUploadedPdfFile.name}`;
             const { error: uploadErr } = await supabaseClient.storage
@@ -853,7 +894,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (!uploadErr) {
                 const { data: urlData } = supabaseClient.storage.from('pdf-files').getPublicUrl(filePath);
                 pdfPublicUrl = urlData.publicUrl;
-                currentUploadedPdfFile = null;
+                currentUploadedPdfFile = null; // đã upload xong, tránh upload lại lần sau
             }
         }
 
@@ -918,6 +959,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnSave = document.getElementById('btn-save');
     if (btnSave) btnSave.addEventListener('click', saveData);
 
+    // Nút xóa toàn bộ dữ liệu (chữ viết + hình vẽ), đồng bộ lên Supabase
     const btnClearAll = document.getElementById('btn-clear-all');
     if (btnClearAll) {
         btnClearAll.addEventListener('click', async () => {
@@ -932,6 +974,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
 
+    // Global keyboard shortcuts
     document.addEventListener('keydown', (e) => {
         const ctrl = e.ctrlKey || e.metaKey;
         if (ctrl && e.key.toLowerCase() === 's') {
@@ -944,6 +987,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // Warn before leaving with unsaved changes
     window.addEventListener('beforeunload', (e) => {
         if (autosaveDot && autosaveDot.classList.contains('unsaved')) {
             e.preventDefault();
@@ -951,5 +995,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // Tải bài học ban đầu
     await loadWorkspaceFromSupabase();
 });
