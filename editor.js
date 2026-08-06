@@ -52,7 +52,7 @@ class RichTextEditor {
         this.btnAlignRight.addEventListener('click', () => this.exec('justifyRight'));
         this.btnAlignJustify.addEventListener('click', () => this.exec('justifyFull'));
 
-        // Ngăn các nút định dạng cướp focus/selection của editor khi click
+        // Ngăn các nút định dạng cướp focus/selection của editor khi click.
         [
             this.btnBold, this.btnItalic, this.btnUnderline, this.btnStrikethrough,
             this.btnAlignLeft, this.btnAlignCenter, this.btnAlignRight, this.btnAlignJustify,
@@ -159,11 +159,13 @@ class RichTextEditor {
     setFontFamily(fontName) {
         const selection = window.getSelection();
         
+        // Trường hợp 1: Có văn bản được bôi đen -> Đổi font phần được chọn
         if (selection && selection.rangeCount > 0 && !selection.getRangeAt(0).collapsed) {
             this.exec('fontName', fontName);
             return;
         }
 
+        // Trường hợp 2: Không bôi đen -> Áp dụng font trực tiếp cho vị trí/đoạn gõ tiếp theo
         this.exec('fontName', fontName);
         this.editor.style.fontFamily = fontName;
 
@@ -181,35 +183,15 @@ class RichTextEditor {
 
     setFontSize(pixelSize) {
         const selection = window.getSelection();
-        if (!selection || !selection.rangeCount) return;
+        if (!selection.rangeCount) return;
 
         const range = selection.getRangeAt(0);
+        if (range.collapsed) return;
 
-        if (range.collapsed) {
-            let node = range.commonAncestorContainer;
-            if (node.nodeType === 3) node = node.parentNode;
-            if (node && node !== this.editor) {
-                node.style.fontSize = pixelSize;
-            } else {
-                this.editor.style.fontSize = pixelSize;
-            }
-            this.editor.focus();
-            return;
-        }
-
-        document.execCommand('fontSize', false, '7');
-
-        const fontElements = this.editor.getElementsByTagName('font');
-        for (let i = fontElements.length - 1; i >= 0; i--) {
-            const fontEl = fontElements[i];
-            if (fontEl.getAttribute('size') === '7') {
-                const span = document.createElement('span');
-                span.style.fontSize = pixelSize;
-                span.innerHTML = fontEl.innerHTML;
-                fontEl.parentNode.replaceChild(span, fontEl);
-            }
-        }
-
+        const span = document.createElement('span');
+        span.style.fontSize = pixelSize;
+        span.appendChild(range.extractContents());
+        range.insertNode(span);
         this.editor.focus();
     }
 
