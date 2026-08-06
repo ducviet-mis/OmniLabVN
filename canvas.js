@@ -238,14 +238,17 @@ class DrawEngine {
         let border = 'rgba(255, 255, 255, 0.9)';
 
         if (this.currentTool === 'highlighter') {
-            size = this.currentLineWidth * 3.5;
-            bg = this.hexToRgba(this.currentColor, 0.4);
+            size = this.currentLineWidth * 4.5;
+            bg = this.hexToRgba(this.currentColor, 0.5);
+            this.cursorDot.style.borderRadius = '2px';
         } else if (this.currentTool === 'eraser') {
             size = this.currentLineWidth * 4;
             bg = 'rgba(148, 163, 184, 0.15)';
             border = 'var(--text-muted)';
-        } else if (this.currentTool !== 'pen') {
-            size = 10;
+            this.cursorDot.style.borderRadius = '50%';
+        } else {
+            this.cursorDot.style.borderRadius = '50%';
+            if (this.currentTool !== 'pen') size = 10;
         }
 
         size = Math.max(size, 6);
@@ -256,7 +259,6 @@ class DrawEngine {
     }
 
     startDrawing(e) {
-        // Tự động ẩn bảng tùy chọn lớn khi người dùng chạm tay/bút xuống vẽ
         if (this.popover) {
             this.popover.style.display = 'none';
         }
@@ -278,7 +280,12 @@ class DrawEngine {
 
         this.applyStrokeStyle(pos);
         this.ctx.beginPath();
-        this.ctx.arc(pos.x, pos.y, (this.currentLineWidth * (pos.pressure || 1)) / 2, 0, Math.PI * 2);
+        if (this.currentTool === 'highlighter') {
+            const hSize = this.currentLineWidth * 4.5;
+            this.ctx.rect(pos.x - hSize / 2, pos.y - hSize / 2, hSize, hSize);
+        } else {
+            this.ctx.arc(pos.x, pos.y, (this.currentLineWidth * (pos.pressure || 1)) / 2, 0, Math.PI * 2);
+        }
         this.ctx.fill();
     }
 
@@ -298,22 +305,23 @@ class DrawEngine {
     }
 
     applyStrokeStyle(pos) {
-        this.ctx.lineCap = 'round';
-        this.ctx.lineJoin = 'round';
+        this.ctx.lineJoin = 'miter';
         const pressureScale = 0.55 + (pos.pressure || 1) * 0.6;
 
         if (this.currentTool === 'pen') {
+            this.ctx.lineCap = 'round';
             this.ctx.globalCompositeOperation = 'source-over';
             this.ctx.strokeStyle = this.currentColor;
             this.ctx.fillStyle = this.currentColor;
             this.ctx.lineWidth = this.currentLineWidth * pressureScale;
         } else if (this.currentTool === 'highlighter') {
-            // Chế độ 'multiply' hòa trộn chìm xuống dưới giúp chữ luôn hiển thị rõ nét 100%
-            this.ctx.globalCompositeOperation = 'multiply';
-            this.ctx.strokeStyle = this.hexToRgba(this.currentColor, 0.4);
-            this.ctx.fillStyle = this.hexToRgba(this.currentColor, 0.4);
-            this.ctx.lineWidth = this.currentLineWidth * 3.5;
+            this.ctx.lineCap = 'butt';
+            this.ctx.globalCompositeOperation = 'destination-over';
+            this.ctx.strokeStyle = this.hexToRgba(this.currentColor, 0.5);
+            this.ctx.fillStyle = this.hexToRgba(this.currentColor, 0.5);
+            this.ctx.lineWidth = this.currentLineWidth * 4.5;
         } else if (this.currentTool === 'eraser') {
+            this.ctx.lineCap = 'round';
             this.ctx.globalCompositeOperation = 'destination-out';
             this.ctx.lineWidth = this.currentLineWidth * 4;
         }
