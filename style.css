@@ -161,6 +161,24 @@ body {
     margin-top: 2px;
 }
 
+/* Shown when a note was opened from the homepage dashboard (?fileId=...) */
+.note-title-badge {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 14px;
+    border-radius: var(--radius-full);
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #cdd8ea;
+    font-size: 12.5px;
+    font-weight: 600;
+    max-width: 260px;
+}
+.note-title-badge i { color: var(--accent); flex-shrink: 0; }
+.note-title-badge span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.note-title-badge.hidden { display: none; }
+
 /* Action Buttons Header */
 .header-actions {
     display: flex;
@@ -942,6 +960,7 @@ body {
    -------------------------------------------------------------------------- */
 @media (max-width: 900px) {
     .logo-tagline { display: none; }
+    .note-title-badge { display: none !important; }
     .action-btn span { display: none; }
     .action-btn { padding: 9px 12px; }
     .upload-btn { padding: 0 12px; width: 38px; justify-content: center; }
