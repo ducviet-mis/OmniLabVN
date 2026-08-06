@@ -1,13 +1,15 @@
 /**
- * OMNILAB — HOMEPAGE (SUPABASE FULL INTEGRATION)
- * Quản lý Đăng nhập, Đăng ký, Thư mục và Bài học trực tiếp trên Supabase.
+ * OMNILAB — HOMEPAGE (FIXED SUPABASE AUTH & TAB SWITCHING)
  */
 
-// ⚠️ ĐIỀN THÔNG TIN SUPABASE CỦA BẠN VÀO ĐÂY:
 const SUPABASE_URL = 'https://vnwqhacajbrlmtoixuzy.supabase.co';
+// 💥 DÁN KHÓA anon public CỦA BẠN VÀO DƯỚI ĐÂY:
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZud3FoYWNhamJybG10b2l4dXp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5OTU2OTEsImV4cCI6MjEwMTU3MTY5MX0.OQZVSpBBYRqcpD-cf7FkOv2iDX20zU5_zZaz1KJuXTA';
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let supabase = null;
+if (window.supabase) {
+    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+}
 
 document.addEventListener('DOMContentLoaded', async () => {
 
@@ -16,6 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ------------------------------------------------------------------
     const toastStack = document.getElementById('toast-stack');
     const showToast = (message, type = 'info', icon = 'fa-circle-check') => {
+        if (!toastStack) return;
         const toast = document.createElement('div');
         toast.className = `toast ${type}`;
         toast.innerHTML = `<i class="fa-solid ${icon}"></i><span>${message}</span>`;
@@ -33,6 +36,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const confirmCancel = document.getElementById('confirm-cancel');
 
     const showConfirm = (message, title = 'Xác nhận thao tác') => new Promise((resolve) => {
+        if (!confirmModal) return resolve(false);
         confirmTitle.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> ${title}`;
         confirmMessage.textContent = message;
         confirmModal.classList.remove('hidden');
@@ -55,6 +59,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const promptCancel = document.getElementById('prompt-cancel');
 
     const showPrompt = (title, initialValue = '', iconClass = 'fa-folder-plus') => new Promise((resolve) => {
+        if (!promptModal) return resolve(null);
         promptTitle.innerHTML = `<i class="fa-solid ${iconClass}"></i> ${title}`;
         promptInput.value = initialValue;
         promptModal.classList.remove('hidden');
@@ -79,7 +84,51 @@ document.addEventListener('DOMContentLoaded', async () => {
     const uid = (prefix) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
     // ------------------------------------------------------------------
-    // 1. VIEW SWITCHING
+    // 1. CHUYỂN TAB ĐĂNG NHẬP / ĐĂNG KÝ (SỬA LỖI KHÔNG CLICK ĐƯỢC)
+    // ------------------------------------------------------------------
+    const authTabs = document.querySelectorAll('.auth-tab');
+    const authTabsWrap = document.querySelector('.auth-tabs');
+    const loginForm = document.getElementById('login-form');
+    const registerForm = document.getElementById('register-form');
+
+    authTabs.forEach((tabBtn) => {
+        tabBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const targetTab = tabBtn.getAttribute('data-tab');
+
+            authTabs.forEach((b) => {
+                const isActive = b.getAttribute('data-tab') === targetTab;
+                b.classList.toggle('active', isActive);
+                b.setAttribute('aria-selected', String(isActive));
+            });
+
+            if (authTabsWrap) authTabsWrap.setAttribute('data-active', targetTab);
+
+            if (targetTab === 'login') {
+                loginForm.classList.add('active');
+                registerForm.classList.remove('active');
+            } else {
+                loginForm.classList.remove('active');
+                registerForm.classList.add('active');
+            }
+        });
+    });
+
+    // An/Hien mat khau
+    document.querySelectorAll('.field-eye').forEach((btn) => {
+        btn.addEventListener('click', (e) => {
+            e.preventDefault();
+            const input = document.getElementById(btn.dataset.toggleFor);
+            if (!input) return;
+            const icon = btn.querySelector('i');
+            const isHidden = input.type === 'password';
+            input.type = isHidden ? 'text' : 'password';
+            if (icon) icon.className = isHidden ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+        });
+    });
+
+    // ------------------------------------------------------------------
+    // 2. VIEW SWITCHING
     // ------------------------------------------------------------------
     const authView = document.getElementById('auth-view');
     const dashboardView = document.getElementById('dashboard-view');
@@ -88,139 +137,124 @@ document.addEventListener('DOMContentLoaded', async () => {
     const userNameLabel = document.getElementById('user-name-label');
 
     const showAuthView = () => {
-        authView.classList.remove('hidden');
-        dashboardView.classList.add('hidden');
-        headerUser.classList.add('hidden');
+        if (authView) authView.classList.remove('hidden');
+        if (dashboardView) dashboardView.classList.add('hidden');
+        if (headerUser) headerUser.classList.add('hidden');
     };
 
     const showDashboardView = (email) => {
-        authView.classList.add('hidden');
-        dashboardView.classList.remove('hidden');
-        headerUser.classList.remove('hidden');
-        const displayName = email.split('@')[0];
-        userAvatar.textContent = displayName.charAt(0).toUpperCase();
-        userNameLabel.textContent = displayName;
+        if (authView) authView.classList.add('hidden');
+        if (dashboardView) dashboardView.classList.remove('hidden');
+        if (headerUser) headerUser.classList.remove('hidden');
+        const displayName = email ? email.split('@')[0] : 'User';
+        if (userAvatar) userAvatar.textContent = displayName.charAt(0).toUpperCase();
+        if (userNameLabel) userNameLabel.textContent = displayName;
         renderDashboard();
     };
-
-    // ------------------------------------------------------------------
-    // 2. AUTH TABS & TOGGLES
-    // ------------------------------------------------------------------
-    const authTabs = document.querySelectorAll('.auth-tab');
-    const authTabsWrap = document.querySelector('.auth-tabs');
-    const loginForm = document.getElementById('login-form');
-    const registerForm = document.getElementById('register-form');
-
-    const setActiveTab = (tab) => {
-        authTabs.forEach((btn) => {
-            const active = btn.dataset.tab === tab;
-            btn.classList.toggle('active', active);
-            btn.setAttribute('aria-selected', String(active));
-        });
-        authTabsWrap.dataset.active = tab;
-        loginForm.classList.toggle('active', tab === 'login');
-        registerForm.classList.toggle('active', tab === 'register');
-    };
-
-    authTabs.forEach((btn) => btn.addEventListener('click', () => setActiveTab(btn.dataset.tab)));
-
-    document.querySelectorAll('.field-eye').forEach((btn) => {
-        btn.addEventListener('click', () => {
-            const input = document.getElementById(btn.dataset.toggleFor);
-            const icon = btn.querySelector('i');
-            const isHidden = input.type === 'password';
-            input.type = isHidden ? 'text' : 'password';
-            icon.className = isHidden ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
-        });
-    });
 
     // ------------------------------------------------------------------
     // 3. SUPABASE AUTH: LOGIN & REGISTER
     // ------------------------------------------------------------------
     const loginError = document.getElementById('login-error');
     const setLoginError = (msg) => {
+        if (!loginError) return;
         loginError.textContent = msg || '';
         loginError.classList.toggle('show', !!msg);
     };
 
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const username = document.getElementById('login-username').value.trim();
-        const password = document.getElementById('login-password').value;
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!supabase) return alert('Chưa nhúng thư viện Supabase!');
 
-        if (!username || !password) {
-            setLoginError('Vui lòng nhập đầy đủ tên tài khoản và mật khẩu.');
-            return;
-        }
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
 
-        const email = username.includes('@') ? username : `${username}@omnilab.local`;
+            if (!username || !password) {
+                setLoginError('Vui lòng nhập đầy đủ tên tài khoản và mật khẩu.');
+                return;
+            }
 
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            // Quy đổi sang định dạng Email @omnilab.com đồng bộ với database
+            const email = username.includes('@') ? username : `${username}@omnilab.com`;
 
-        if (error) {
-            setLoginError('Sai tên tài khoản hoặc mật khẩu.');
-            return;
-        }
+            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
 
-        setLoginError('');
-        showToast(`Chào mừng trở lại!`, 'info', 'fa-user-check');
-        showDashboardView(data.user.email);
-    });
+            if (error) {
+                setLoginError('Sai tên tài khoản hoặc mật khẩu.');
+                return;
+            }
+
+            setLoginError('');
+            showToast('Chào mừng trở lại!', 'info', 'fa-user-check');
+            showDashboardView(data.user.email);
+        });
+    }
 
     const registerError = document.getElementById('register-error');
     const setRegisterError = (msg) => {
+        if (!registerError) return;
         registerError.textContent = msg || '';
         registerError.classList.toggle('show', !!msg);
     };
 
-    registerForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const username = document.getElementById('reg-username').value.trim();
-        const password = document.getElementById('reg-password').value;
-        const confirm = document.getElementById('reg-confirm').value;
+    if (registerForm) {
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (!supabase) return alert('Chưa nhúng thư viện Supabase!');
 
-        if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
-            setRegisterError('Tên tài khoản từ 3–20 ký tự, không chứa ký tự đặc biệt.');
-            return;
-        }
-        if (password.length < 6) {
-            setRegisterError('Mật khẩu cần tối thiểu 6 ký tự.');
-            return;
-        }
-        if (password !== confirm) {
-            setRegisterError('Mật khẩu xác nhận không khớp.');
-            return;
-        }
+            const username = document.getElementById('reg-username').value.trim();
+            const password = document.getElementById('reg-password').value;
+            const confirm = document.getElementById('reg-confirm').value;
 
-        const email = `${username}@omnilab.local`;
+            if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
+                setRegisterError('Tên tài khoản từ 3–20 ký tự, không chứa dấu câu.');
+                return;
+            }
+            if (password.length < 6) {
+                setRegisterError('Mật khẩu cần tối thiểu 6 ký tự.');
+                return;
+            }
+            if (password !== confirm) {
+                setRegisterError('Mật khẩu xác nhận không khớp.');
+                return;
+            }
 
-        const { data, error } = await supabase.auth.signUp({
-            email,
-            password,
-            options: { data: { username } }
+            const email = `${username}@omnilab.com`;
+
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password,
+                options: { data: { username } }
+            });
+
+            if (error) {
+                setRegisterError(error.message.includes('already registered') ? 'Tài khoản này đã tồn tại.' : error.message);
+                return;
+            }
+
+            setRegisterError('');
+            showToast('Tạo tài khoản thành công! Hãy đăng nhập.', 'info', 'fa-user-plus');
+            registerForm.reset();
+
+            // Tự động nhảy sang tab Đăng nhập
+            const loginTabBtn = document.querySelector('.auth-tab[data-tab="login"]');
+            if (loginTabBtn) loginTabBtn.click();
+            document.getElementById('login-username').value = username;
         });
+    }
 
-        if (error) {
-            setRegisterError(error.message.includes('already registered') ? 'Tài khoản này đã tồn tại.' : error.message);
-            return;
-        }
-
-        setRegisterError('');
-        showToast('Tạo tài khoản thành công! Đang đăng nhập...', 'info', 'fa-user-plus');
-        registerForm.reset();
-        setActiveTab('login');
-        document.getElementById('login-username').value = username;
-        document.getElementById('login-password').value = password;
-    });
-
-    document.getElementById('btn-logout').addEventListener('click', async () => {
-        await supabase.auth.signOut();
-        showToast('Đã đăng xuất.', 'info', 'fa-right-from-bracket');
-        showAuthView();
-    });
+    const btnLogout = document.getElementById('btn-logout');
+    if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+            if (supabase) await supabase.auth.signOut();
+            showToast('Đã đăng xuất.', 'info', 'fa-right-from-bracket');
+            showAuthView();
+        });
+    }
 
     // ------------------------------------------------------------------
-    // 4. SUPABASE DATABASE (FOLDERS & FILES)
+    // 4. DASHBOARD RENDER
     // ------------------------------------------------------------------
     const folderGrid = document.getElementById('folder-grid');
     const fileGrid = document.getElementById('file-grid');
@@ -246,13 +280,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         return new Date(ts).toLocaleDateString('vi-VN');
     };
 
-    const escapeHtml = (str) => str.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const escapeHtml = (str) => str ? str.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])) : '';
     const closeAllItemMenus = () => document.querySelectorAll('.item-menu.open').forEach((m) => m.classList.remove('open'));
 
     const renderDashboard = async () => {
+        if (!supabase) return;
         closeAllItemMenus();
+
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        if (!user) return showAuthView();
 
         const { data: folders } = await supabase.from('folders').select('*').eq('user_id', user.id);
         const { data: files } = await supabase.from('files').select('*').eq('user_id', user.id);
@@ -260,40 +296,48 @@ document.addEventListener('DOMContentLoaded', async () => {
         const allFolders = folders || [];
         const allFiles = files || [];
 
-        statFolders.textContent = allFolders.length;
-        statFiles.textContent = allFiles.length;
-        statRecent.textContent = allFiles.length 
-            ? formatRelativeTime(Math.max(...allFiles.map(f => new Date(f.updated_at).getTime())))
-            : '—';
-        const totalKB = allFiles.reduce((sum, f) => sum + (f.size_kb || 0), 0);
-        statStorage.textContent = totalKB > 1024 ? `${(totalKB / 1024).toFixed(1)} MB` : `${totalKB} KB`;
+        if (statFolders) statFolders.textContent = allFolders.length;
+        if (statFiles) statFiles.textContent = allFiles.length;
+        if (statRecent) {
+            statRecent.textContent = allFiles.length 
+                ? formatRelativeTime(Math.max(...allFiles.map(f => new Date(f.updated_at).getTime())))
+                : '—';
+        }
+        if (statStorage) {
+            const totalKB = allFiles.reduce((sum, f) => sum + (f.size_kb || 0), 0);
+            statStorage.textContent = totalKB > 1024 ? `${(totalKB / 1024).toFixed(1)} MB` : `${totalKB} KB`;
+        }
 
-        breadcrumb.innerHTML = '';
-        const rootBtn = document.createElement('button');
-        rootBtn.className = `crumb ${currentFolderId === null ? 'current' : ''}`;
-        rootBtn.innerHTML = '<i class="fa-solid fa-house"></i> Trang chủ';
-        rootBtn.onclick = () => { currentFolderId = null; searchTerm = ''; searchInput.value = ''; renderDashboard(); };
-        breadcrumb.appendChild(rootBtn);
+        if (breadcrumb) {
+            breadcrumb.innerHTML = '';
+            const rootBtn = document.createElement('button');
+            rootBtn.className = `crumb ${currentFolderId === null ? 'current' : ''}`;
+            rootBtn.innerHTML = '<i class="fa-solid fa-house"></i> Trang chủ';
+            rootBtn.onclick = () => { currentFolderId = null; searchTerm = ''; if (searchInput) searchInput.value = ''; renderDashboard(); };
+            breadcrumb.appendChild(rootBtn);
 
-        if (currentFolderId !== null) {
-            const currentFolder = allFolders.find(f => f.id === currentFolderId);
-            const sep = document.createElement('span');
-            sep.className = 'crumb-sep';
-            sep.textContent = '/';
-            breadcrumb.appendChild(sep);
+            if (currentFolderId !== null) {
+                const currentFolder = allFolders.find(f => f.id === currentFolderId);
+                const sep = document.createElement('span');
+                sep.className = 'crumb-sep';
+                sep.textContent = '/';
+                breadcrumb.appendChild(sep);
 
-            const folderBtn = document.createElement('button');
-            folderBtn.className = 'crumb current';
-            folderBtn.innerHTML = `<i class="fa-solid fa-folder"></i> ${currentFolder ? escapeHtml(currentFolder.name) : 'Thư mục'}`;
-            breadcrumb.appendChild(folderBtn);
+                const folderBtn = document.createElement('button');
+                folderBtn.className = 'crumb current';
+                folderBtn.innerHTML = `<i class="fa-solid fa-folder"></i> ${currentFolder ? escapeHtml(currentFolder.name) : 'Thư mục'}`;
+                breadcrumb.appendChild(folderBtn);
+            }
         }
 
         const term = searchTerm.trim().toLowerCase();
 
         if (currentFolderId === null) {
-            fileGrid.classList.add('hidden');
-            folderGrid.classList.remove('hidden');
-            folderGrid.innerHTML = '';
+            if (fileGrid) fileGrid.classList.add('hidden');
+            if (folderGrid) {
+                folderGrid.classList.remove('hidden');
+                folderGrid.innerHTML = '';
+            }
 
             const displayFolders = allFolders.filter(f => f.name.toLowerCase().includes(term));
             displayFolders.forEach(folder => {
@@ -342,13 +386,15 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 };
 
-                folderGrid.appendChild(card);
+                if (folderGrid) folderGrid.appendChild(card);
             });
-            emptyState.classList.toggle('hidden', displayFolders.length > 0);
+            if (emptyState) emptyState.classList.toggle('hidden', displayFolders.length > 0);
         } else {
-            folderGrid.classList.add('hidden');
-            fileGrid.classList.remove('hidden');
-            fileGrid.innerHTML = '';
+            if (folderGrid) folderGrid.classList.add('hidden');
+            if (fileGrid) {
+                fileGrid.classList.remove('hidden');
+                fileGrid.innerHTML = '';
+            }
 
             const displayFiles = allFiles
                 .filter(f => f.folder_id === currentFolderId)
@@ -401,56 +447,65 @@ document.addEventListener('DOMContentLoaded', async () => {
                     }
                 };
 
-                fileGrid.appendChild(card);
+                if (fileGrid) fileGrid.appendChild(card);
             });
-            emptyState.classList.toggle('hidden', displayFiles.length > 0);
+            if (emptyState) emptyState.classList.toggle('hidden', displayFiles.length > 0);
         }
     };
 
-    document.getElementById('btn-new-folder').onclick = async () => {
-        const name = await showPrompt('Thư mục mới', '', 'fa-folder-plus');
-        if (!name) return;
-        const { data: { user } } = await supabase.auth.getUser();
-        await supabase.from('folders').insert([{ id: uid('fold'), user_id: user.id, name }]);
-        showToast(`Đã tạo thư mục "${name}".`, 'info', 'fa-folder-plus');
-        currentFolderId = null;
-        renderDashboard();
-    };
+    const btnNewFolder = document.getElementById('btn-new-folder');
+    if (btnNewFolder) {
+        btnNewFolder.onclick = async () => {
+            const name = await showPrompt('Thư mục mới', '', 'fa-folder-plus');
+            if (!name) return;
+            const { data: { user } } = await supabase.auth.getUser();
+            await supabase.from('folders').insert([{ id: uid('fold'), user_id: user.id, name }]);
+            showToast(`Đã tạo thư mục "${name}".`, 'info', 'fa-folder-plus');
+            currentFolderId = null;
+            renderDashboard();
+        };
+    }
 
-    document.getElementById('btn-new-note').onclick = async () => {
-        const { data: { user } } = await supabase.auth.getUser();
-        let folderId = currentFolderId;
+    const btnNewNote = document.getElementById('btn-new-note');
+    if (btnNewNote) {
+        btnNewNote.onclick = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            let folderId = currentFolderId;
 
-        if (!folderId) {
-            const { data: folders } = await supabase.from('folders').select('*').eq('user_id', user.id);
-            if (!folders || folders.length === 0) {
-                folderId = uid('fold');
-                await supabase.from('folders').insert([{ id: folderId, user_id: user.id, name: 'Chưa phân loại' }]);
-            } else {
-                showToast('Hãy mở một thư mục trước khi tạo ghi chú mới.', 'error', 'fa-circle-exclamation');
-                return;
+            if (!folderId) {
+                const { data: folders } = await supabase.from('folders').select('*').eq('user_id', user.id);
+                if (!folders || folders.length === 0) {
+                    folderId = uid('fold');
+                    await supabase.from('folders').insert([{ id: folderId, user_id: user.id, name: 'Chưa phân loại' }]);
+                } else {
+                    showToast('Hãy mở một thư mục trước khi tạo ghi chú mới.', 'error', 'fa-circle-exclamation');
+                    return;
+                }
             }
-        }
 
-        const newFileId = uid('file');
-        await supabase.from('files').insert([{
-            id: newFileId,
-            user_id: user.id,
-            folder_id: folderId,
-            title: 'Ghi chú mới',
-            size_kb: 0
-        }]);
+            const newFileId = uid('file');
+            await supabase.from('files').insert([{
+                id: newFileId,
+                user_id: user.id,
+                folder_id: folderId,
+                title: 'Ghi chú mới',
+                size_kb: 0
+            }]);
 
-        window.location.href = `index.html?fileId=${encodeURIComponent(newFileId)}`;
-    };
+            window.location.href = `index.html?fileId=${encodeURIComponent(newFileId)}`;
+        };
+    }
 
-    searchInput.oninput = (e) => { searchTerm = e.target.value; renderDashboard(); };
+    if (searchInput) searchInput.oninput = (e) => { searchTerm = e.target.value; renderDashboard(); };
     document.onclick = (e) => { if (!e.target.closest('.item-menu-btn')) closeAllItemMenus(); };
 
-    const { data: { session } } = await supabase.auth.getSession();
-    if (session && session.user) {
-        showDashboardView(session.user.email);
-    } else {
-        showAuthView();
+    // Kiểm tra đăng nhập khi mở trang
+    if (supabase) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session && session.user) {
+            showDashboardView(session.user.email);
+        } else {
+            showAuthView();
+        }
     }
 });
