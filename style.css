@@ -426,7 +426,7 @@ body {
     border-radius: 3px;
 }
 
-/* PDF Direct-Annotation Overlay — write / highlight straight onto the page */
+/* PDF Direct-Annotation Overlay */
 #pdf-draw-canvas {
     position: absolute;
     top: 0;
@@ -483,7 +483,22 @@ body {
 }
 
 .tool-btn:hover { background-color: var(--accent-soft); color: var(--accent); }
-.tool-btn.active { background-color: var(--accent); color: #04262b; box-shadow: 0 2px 8px var(--accent-glow); }
+
+/* FORMATTING BUTTON ACTIVE STATES (WORD STYLE) */
+.tool-group button.active,
+.tool-btn.active,
+button.active {
+    background-color: var(--accent) !important;
+    color: var(--ink-950) !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2), 0 0 8px var(--accent-glow) !important;
+    font-weight: bold;
+}
+
+[data-theme="dark"] .tool-group button.active,
+[data-theme="dark"] button.active {
+    background-color: var(--accent) !important;
+    color: #04262b !important;
+}
 
 .tool-btn.danger {
     width: auto;
@@ -540,10 +555,7 @@ body {
 }
 
 /* --------------------------------------------------------------------------
-   PEN DOCK — floating round pen button that expands into a drawing toolbar.
-   Collapsed by default (single round button); click to expand and start
-   writing/highlighting directly on the canvas beneath it; click again
-   (or Esc, or click outside) to collapse back down.
+   PEN DOCK
    -------------------------------------------------------------------------- */
 .pen-dock {
     position: absolute;
@@ -601,8 +613,6 @@ body {
     flex-wrap: wrap;
 }
 
-/* Custom small pen-tip cursor — replaces the oversized native crosshair.
-   Its size/color track the active tool so it also previews stroke width. */
 .pen-cursor-dot {
     position: fixed;
     top: 0;
@@ -659,13 +669,10 @@ body {
     top: 0;
     left: 0;
     z-index: 2;
-    pointer-events: none; /* By default, pass events through to Text Editor */
+    pointer-events: none;
     touch-action: none;
 }
 
-/* While the Pen Dock is open, pointer-events are switched to "auto" by JS
-   and a small custom cursor dot (.pen-cursor-dot) replaces the system
-   cursor, instead of the old oversized crosshair. */
 #note-canvas.drawing-active { cursor: none; }
 
 /* Status / telemetry footer */
@@ -779,7 +786,7 @@ body {
 
 .casio-btn {
     height: 38px;
-    border-radius: 9px;
+    border-radius: 99px;
     border: none;
     background-color: #1f2c48;
     color: #e7ecf5;
@@ -811,7 +818,7 @@ body {
 .casio-btn.action-copy:hover { background-color: #f7b750; }
 
 /* --------------------------------------------------------------------------
-   5. DIALOGS (confirm / graph function prompt)
+   5. DIALOGS
    -------------------------------------------------------------------------- */
 .dialog-overlay {
     position: fixed;
@@ -980,24 +987,4 @@ body {
         animation-duration: 0.001ms !important;
         transition-duration: 0.001ms !important;
     }
-}
-/* ==========================================================================
-   FORMATTING BUTTON ACTIVE STATES (WORD STYLE)
-   ========================================================================== */
-
-/* Trạng thái khi nút B, I, U, S... được BẬT */
-.tool-group button.active,
-.tool-btn.active,
-button.active {
-    background-color: var(--accent) !important;
-    color: var(--ink-950) !important;
-    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2), 0 0 8px var(--accent-glow) !important;
-    font-weight: bold;
-}
-
-/* Tùy chỉnh riêng nếu giao diện ở chế độ Tối (Dark mode) */
-[data-theme="dark"] .tool-group button.active,
-[data-theme="dark"] button.active {
-    background-color: var(--accent) !important;
-    color: #04262b !important;
 }
