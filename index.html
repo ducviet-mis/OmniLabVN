@@ -112,6 +112,43 @@
             .quick-switch-fab span { display: none; }
             .quick-switch-fab { padding: 14px; border-radius: 50%; }
         }
+
+        /* ---- 4. Thanh trượt Zoom PDF tự do + nút "Vừa khung" ---- */
+        .pdf-zoom-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 90px;
+            height: 4px;
+            border-radius: 999px;
+            background: rgba(120, 120, 130, 0.25);
+            outline: none;
+            cursor: pointer;
+            vertical-align: middle;
+        }
+        .pdf-zoom-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #0d9488;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+            cursor: pointer;
+        }
+        .pdf-zoom-slider::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #0d9488;
+            border: 2px solid #fff;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+            cursor: pointer;
+        }
+        #pdf-zoom-fit.active-fit {
+            color: #0d9488;
+            background: rgba(13, 148, 136, 0.14);
+        }
     </style>
 
     <!-- Favicon (inline flask emoji) -->
@@ -186,8 +223,10 @@
                 <div class="pdf-doc-name" id="pdf-doc-name">Chưa có tài liệu</div>
                 <div class="pdf-zoom-controls">
                     <button id="pdf-zoom-out" class="tool-btn" title="Thu nhỏ"><i class="fa-solid fa-magnifying-glass-minus"></i></button>
+                    <input type="range" id="pdf-zoom-slider" class="pdf-zoom-slider" min="30" max="300" step="1" value="100" title="Kéo để chỉnh kích thước PDF tự do">
                     <span id="pdf-zoom-level">100%</span>
                     <button id="pdf-zoom-in" class="tool-btn" title="Phóng to"><i class="fa-solid fa-magnifying-glass-plus"></i></button>
+                    <button id="pdf-zoom-fit" class="tool-btn active-fit" title="Tự động vừa khung theo cột PDF"><i class="fa-solid fa-arrows-left-right-to-line"></i></button>
                 </div>
             </div>
             <div id="pdf-render-wrapper" class="pdf-viewport">
