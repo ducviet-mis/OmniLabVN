@@ -1,5 +1,8 @@
 /**
  * OMNILAB - RICH TEXT EDITOR ENGINE (WITH EXTENDED TABLE & DROPDOWN MODULE)
+ * Fully manages formatting, font selection, alignments, lists, line height,
+ * keyboard shortcuts, undo/redo, a quick scientific-symbol palette, and 
+ * advanced scientific table insertion with grid selector & context controls.
  */
 
 class RichTextEditor {
@@ -9,6 +12,7 @@ class RichTextEditor {
         this.selectedCells = [];
         this.initControls();
         this.initEvents();
+        this.initSymbolPalette();
         this.initMoreDropdownAndTable();
     }
 
@@ -28,6 +32,11 @@ class RichTextEditor {
         this.textColorInput = document.getElementById('text-color');
         this.textBgColorInput = document.getElementById('text-bg-color');
 
+        this.btnBulletList = document.getElementById('btn-bullet-list');
+        this.btnNumberList = document.getElementById('btn-number-list');
+        this.btnFormula = document.getElementById('btn-formula');
+        this.lineHeightSelect = document.getElementById('line-height');
+
         this.btnUndo = document.getElementById('btn-undo-text');
         this.btnRedo = document.getElementById('btn-redo-text');
 
@@ -38,64 +47,146 @@ class RichTextEditor {
     }
 
     initEvents() {
-        this.fontFamilySelect.addEventListener('change', (e) => this.setFontFamily(e.target.value));
-        this.fontSizeSelect.addEventListener('change', (e) => this.setFontSize(e.target.value));
+        // Executive Commands Execution
+        if (this.fontFamilySelect) this.fontFamilySelect.addEventListener('change', (e) => this.setFontFamily(e.target.value));
+        if (this.fontSizeSelect) this.fontSizeSelect.addEventListener('change', (e) => this.setFontSize(e.target.value));
 
-        this.btnBold.addEventListener('click', () => this.exec('bold'));
-        this.btnItalic.addEventListener('click', () => this.exec('italic'));
-        this.btnUnderline.addEventListener('click', () => this.exec('underline'));
-        this.btnStrikethrough.addEventListener('click', () => this.exec('strikeThrough'));
+        if (this.btnBold) this.btnBold.addEventListener('click', () => this.exec('bold'));
+        if (this.btnItalic) this.btnItalic.addEventListener('click', () => this.exec('italic'));
+        if (this.btnUnderline) this.btnUnderline.addEventListener('click', () => this.exec('underline'));
+        if (this.btnStrikethrough) this.btnStrikethrough.addEventListener('click', () => this.exec('strikeThrough'));
 
-        this.btnAlignLeft.addEventListener('click', () => this.exec('justifyLeft'));
-        this.btnAlignCenter.addEventListener('click', () => this.exec('justifyCenter'));
-        this.btnAlignRight.addEventListener('click', () => this.exec('justifyRight'));
-        this.btnAlignJustify.addEventListener('click', () => this.exec('justifyFull'));
+        if (this.btnAlignLeft) this.btnAlignLeft.addEventListener('click', () => this.exec('justifyLeft'));
+        if (this.btnAlignCenter) this.btnAlignCenter.addEventListener('click', () => this.exec('justifyCenter'));
+        if (this.btnAlignRight) this.btnAlignRight.addEventListener('click', () => this.exec('justifyRight'));
+        if (this.btnAlignJustify) this.btnAlignJustify.addEventListener('click', () => this.exec('justifyFull'));
 
+        // Ngăn các nút định dạng cướp focus/selection của editor khi click.
         [
             this.btnBold, this.btnItalic, this.btnUnderline, this.btnStrikethrough,
-            this.btnAlignLeft, this.btnAlignCenter, this.btnAlignRight, this.btnAlignJustify
+            this.btnAlignLeft, this.btnAlignCenter, this.btnAlignRight, this.btnAlignJustify,
+            this.btnBulletList, this.btnNumberList
         ].forEach((btn) => {
             if (btn) btn.addEventListener('mousedown', (e) => e.preventDefault());
         });
 
-        this.textColorInput.addEventListener('input', (e) => this.exec('foreColor', e.target.value));
-        this.textBgColorInput.addEventListener('input', (e) => this.exec('hiliteColor', e.target.value));
+        if (this.textColorInput) this.textColorInput.addEventListener('input', (e) => this.exec('foreColor', e.target.value));
+        if (this.textBgColorInput) this.textBgColorInput.addEventListener('input', (e) => this.exec('hiliteColor', e.target.value));
 
-        this.btnUndo.addEventListener('click', () => this.exec('undo'));
-        this.btnRedo.addEventListener('click', () => this.exec('redo'));
+        if (this.btnBulletList) this.btnBulletList.addEventListener('click', () => this.exec('insertUnorderedList'));
+        if (this.btnNumberList) this.btnNumberList.addEventListener('click', () => this.exec('insertOrderedList'));
 
-        this.editor.addEventListener('keydown', (e) => {
-            const ctrl = e.ctrlKey || e.metaKey;
-            if (!ctrl) return;
-            const key = e.key.toLowerCase();
-            if (key === 'b') { e.preventDefault(); this.exec('bold'); }
-            else if (key === 'i') { e.preventDefault(); this.exec('italic'); }
-            else if (key === 'u') { e.preventDefault(); this.exec('underline'); }
-        });
+        if (this.lineHeightSelect) {
+            this.lineHeightSelect.addEventListener('change', (e) => {
+                this.setLineHeight(e.target.value);
+            });
+        }
 
+        if (this.btnUndo) this.btnUndo.addEventListener('click', () => this.exec('undo'));
+        if (this.btnRedo) this.btnRedo.addEventListener('click', () => this.exec('redo'));
+
+        // Keyboard shortcuts
+        if (this.editor) {
+            this.editor.addEventListener('keydown', (e) => {
+                const ctrl = e.ctrlKey || e.metaKey;
+                if (!ctrl) return;
+                const key = e.key.toLowerCase();
+                if (key === 'b') { e.preventDefault(); this.exec('bold'); }
+                else if (key === 'i') { e.preventDefault(); this.exec('italic'); }
+                else if (key === 'u') { e.preventDefault(); this.exec('underline'); }
+            });
+
+            // Lắng nghe click trong editor để xử lý chọn Bảng / Ô Bảng
+            this.editor.addEventListener('click', (e) => {
+                const td = e.target.closest('td, th');
+                const table = e.target.closest('table.omni-table');
+
+                if (table) {
+                    this.activeTable = table;
+                    this.positionTableContextMenu(table);
+                } else {
+                    this.hideTableContextMenu();
+                }
+
+                if (td && e.shiftKey && this.activeTable) {
+                    if (!this.selectedCells.includes(td)) this.selectedCells.push(td);
+                    td.classList.add('selected-cell');
+                } else if (td) {
+                    this.clearCellSelections();
+                    this.selectedCells = [td];
+                    td.classList.add('selected-cell');
+                }
+            });
+        }
+
+        // Keep Selection Active State Synced
         document.addEventListener('selectionchange', () => this.updateActiveStates());
+    }
 
-        // Lắng nghe click trong editor để xử lý Bảng
-        this.editor.addEventListener('click', (e) => {
-            const td = e.target.closest('td, th');
-            const table = e.target.closest('table.omni-table');
+    initSymbolPalette() {
+        const symbols = ['√', 'π', '∞', '≤', '≥', '±', '→', 'Δ', 'θ', 'α', 'β', 'Σ', '∫', '·', '²', '³', '₂', '°'];
 
-            if (table) {
-                this.activeTable = table;
-                this.positionTableContextMenu(table);
-            } else {
-                this.hideTableContextMenu();
-            }
-
-            if (td && e.shiftKey && this.activeTable) {
-                if (!this.selectedCells.includes(td)) this.selectedCells.push(td);
-                td.classList.add('selected-cell');
-            } else if (td) {
-                this.clearCellSelections();
-                this.selectedCells = [td];
-                td.classList.add('selected-cell');
-            }
+        this.palette = document.createElement('div');
+        this.palette.className = 'symbol-palette hidden';
+        this.palette.setAttribute('role', 'menu');
+        Object.assign(this.palette.style, {
+            position: 'absolute', display: 'grid',
+            gridTemplateColumns: 'repeat(6, 1fr)', gap: '4px',
+            background: 'var(--paper-panel)', border: '1px solid var(--border-color)',
+            borderRadius: '10px', padding: '8px', boxShadow: 'var(--shadow-lg)',
+            zIndex: '500'
         });
+        this.palette.classList.add('hidden');
+
+        symbols.forEach(sym => {
+            const b = document.createElement('button');
+            b.type = 'button';
+            b.textContent = sym;
+            Object.assign(b.style, {
+                width: '30px', height: '30px', border: 'none', borderRadius: '7px',
+                background: 'var(--paper-sunken)', color: 'var(--text-ink)', cursor: 'pointer',
+                fontSize: '14px'
+            });
+            b.addEventListener('mouseenter', () => b.style.background = 'var(--accent-soft)');
+            b.addEventListener('mouseleave', () => b.style.background = 'var(--paper-sunken)');
+            b.addEventListener('click', () => {
+                this.insertTextAtCursor(sym);
+                this.hidePalette();
+            });
+            this.palette.appendChild(b);
+        });
+
+        document.body.appendChild(this.palette);
+
+        if (this.btnFormula) {
+            this.btnFormula.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.togglePalette();
+            });
+        }
+        document.addEventListener('click', (e) => {
+            if (this.palette && !this.palette.contains(e.target) && e.target !== this.btnFormula) this.hidePalette();
+        });
+    }
+
+    togglePalette() {
+        if (this.palette.classList.contains('hidden')) this.showPalette();
+        else this.hidePalette();
+    }
+
+    showPalette() {
+        if (!this.btnFormula) return;
+        const rect = this.btnFormula.getBoundingClientRect();
+        this.palette.style.top = `${rect.bottom + window.scrollY + 6}px`;
+        this.palette.style.left = `${rect.left + window.scrollX}px`;
+        this.palette.classList.remove('hidden');
+        this.palette.style.display = 'grid';
+    }
+
+    hidePalette() {
+        if (!this.palette) return;
+        this.palette.classList.add('hidden');
+        this.palette.style.display = 'none';
     }
 
     initMoreDropdownAndTable() {
@@ -110,7 +201,7 @@ class RichTextEditor {
 
         // Click outside -> Tự động đóng Dropdown
         document.addEventListener('click', (e) => {
-            if (!this.morePopoverMenu.contains(e.target) && !this.btnMoreToggle.contains(e.target)) {
+            if (this.morePopoverMenu && !this.morePopoverMenu.contains(e.target) && !this.btnMoreToggle.contains(e.target)) {
                 this.setMoreDropdownOpen(false);
             }
         });
@@ -148,6 +239,7 @@ class RichTextEditor {
     }
 
     setMoreDropdownOpen(open) {
+        if (!this.morePopoverMenu || !this.btnMoreToggle) return;
         if (open) {
             this.morePopoverMenu.classList.add('open');
             this.btnMoreToggle.classList.add('active');
@@ -360,25 +452,33 @@ class RichTextEditor {
 
     setFontFamily(fontName) {
         const selection = window.getSelection();
+        
+        // Trường hợp 1: Có văn bản được bôi đen -> Đổi font phần được chọn
         if (selection && selection.rangeCount > 0 && !selection.getRangeAt(0).collapsed) {
             this.exec('fontName', fontName);
             return;
         }
 
+        // Trường hợp 2: Không bôi đen -> Áp dụng font trực tiếp cho vị trí/đoạn gõ tiếp theo
         this.exec('fontName', fontName);
         this.editor.style.fontFamily = fontName;
 
         if (selection && selection.rangeCount > 0) {
             let node = selection.getRangeAt(0).commonAncestorContainer;
             if (node.nodeType === 3) node = node.parentNode;
-            if (node && node !== this.editor) node.style.fontFamily = fontName;
+            
+            if (node && node !== this.editor) {
+                node.style.fontFamily = fontName;
+            }
         }
+
         this.editor.focus();
     }
 
     setFontSize(pixelSize) {
         const selection = window.getSelection();
         if (!selection.rangeCount) return;
+
         const range = selection.getRangeAt(0);
         if (range.collapsed) return;
 
@@ -387,6 +487,26 @@ class RichTextEditor {
         span.appendChild(range.extractContents());
         range.insertNode(span);
         this.editor.focus();
+    }
+
+    setLineHeight(height) {
+        const selection = window.getSelection();
+        if (!selection.rangeCount) return;
+
+        let node = selection.getRangeAt(0).commonAncestorContainer;
+        if (node.nodeType === 3) node = node.parentNode;
+
+        while (node && node !== this.editor) {
+            if (node.nodeName === 'P' || node.nodeName === 'DIV' || node.nodeName === 'LI') {
+                node.style.lineHeight = height;
+                break;
+            }
+            node = node.parentNode;
+        }
+
+        if (node === this.editor) {
+            this.editor.style.lineHeight = height;
+        }
     }
 
     updateActiveStates() {
@@ -403,13 +523,27 @@ class RichTextEditor {
         if (this.btnAlignJustify) this.btnAlignJustify.classList.toggle('active', document.queryCommandState('justifyFull'));
     }
 
-    getContent() { return this.editor.innerHTML; }
+    insertTextAtCursor(text) {
+        this.editor.focus();
+        this.exec('insertText', text);
+    }
+
+    getContent() {
+        return this.editor.innerHTML;
+    }
+
     setContent(html) {
         this.editor.innerHTML = html;
         this.attachEdgeButtonsToTables();
     }
-    getPlainText() { return this.editor.innerText || this.editor.textContent || ''; }
-    clear() { this.editor.innerHTML = ''; }
+
+    getPlainText() {
+        return this.editor.innerText || this.editor.textContent || '';
+    }
+
+    clear() {
+        this.editor.innerHTML = '';
+    }
 }
 
 // Global Export Engine Instance
