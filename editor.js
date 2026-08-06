@@ -52,6 +52,19 @@ class RichTextEditor {
         this.btnAlignRight.addEventListener('click', () => this.exec('justifyRight'));
         this.btnAlignJustify.addEventListener('click', () => this.exec('justifyFull'));
 
+        // Ngăn các nút định dạng cướp focus/selection của editor khi click.
+        // Nếu không có dòng này, mỗi lần bấm B/I/U/S trình duyệt sẽ làm mất
+        // vùng chọn (hoặc trạng thái gõ chữ đang bật) đang có trong editor,
+        // khiến các định dạng không cộng dồn được với nhau (chỉ giữ lại nút
+        // bấm sau cùng thay vì bật được cả B + I + U cùng lúc như Word).
+        [
+            this.btnBold, this.btnItalic, this.btnUnderline, this.btnStrikethrough,
+            this.btnAlignLeft, this.btnAlignCenter, this.btnAlignRight, this.btnAlignJustify,
+            this.btnBulletList, this.btnNumberList
+        ].forEach((btn) => {
+            btn.addEventListener('mousedown', (e) => e.preventDefault());
+        });
+
         this.textColorInput.addEventListener('input', (e) => this.exec('foreColor', e.target.value));
         this.textBgColorInput.addEventListener('input', (e) => this.exec('hiliteColor', e.target.value));
 
