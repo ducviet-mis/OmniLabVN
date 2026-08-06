@@ -1,5 +1,5 @@
 /**
- * OMNILAB - DRAWING ENGINE (UPDATED WITH EXPANDED SHAPES & GEOMETRY)
+ * OMNILAB - DRAWING ENGINE (SUB-MENU SHAPES & CORRECTED MAPPINGS)
  */
 
 class DrawEngine {
@@ -47,6 +47,8 @@ class DrawEngine {
         this.undoBtn = this.dockEl.querySelector('.pen-undo');
         this.redoBtn = this.dockEl.querySelector('.pen-redo');
         this.clearBtn = this.dockEl.querySelector('.pen-clear');
+        this.shapeToggleBtn = this.dockEl.querySelector('.btn-shape-toggle');
+        this.shapeWrapper = this.dockEl.querySelector('.shape-dropdown-wrapper');
 
         this.currentColor = this.colorInput ? this.colorInput.value : '#0284c7';
         this.currentLineWidth = this.widthSelect ? parseInt(this.widthSelect.value, 10) : 4;
@@ -110,20 +112,49 @@ class DrawEngine {
         this.dockEl.classList.toggle('open', open);
         this.canvas.style.pointerEvents = open ? 'auto' : 'none';
         this.canvas.classList.toggle('drawing-active', open);
-        if (!open) this.cursorDot.style.display = 'none';
+        if (!open) {
+            this.cursorDot.style.display = 'none';
+            if (this.shapeWrapper) this.shapeWrapper.classList.remove('open');
+        }
     }
 
     initToolEvents() {
+        // Toggle Submenu chọn hình học
+        if (this.shapeToggleBtn && this.shapeWrapper) {
+            this.shapeToggleBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                this.shapeWrapper.classList.toggle('open');
+            });
+        }
+
         this.toolButtons.forEach((btn) => {
-            btn.addEventListener('click', () => {
+            btn.addEventListener('click', (e) => {
                 const tool = btn.dataset.tool;
                 if (tool === 'graph') {
                     if (window.onGraphToolClick) window.onGraphToolClick(this);
                     return;
                 }
+
                 this.currentTool = tool;
+
+                // Cập nhật trạng thái active cho nút
                 this.toolButtons.forEach((b) => b.classList.remove('active'));
-                btn.classList.add('active');
+                if (this.shapeToggleBtn) this.shapeToggleBtn.classList.remove('active');
+
+                // Nếu chọn hình nằm trong Submenu, đổi Icon nút chính và Active nút Submenu
+                if (btn.closest('.shape-submenu')) {
+                    if (this.shapeToggleBtn) {
+                        this.shapeToggleBtn.classList.add('active');
+                        const iconInside = btn.querySelector('i');
+                        if (iconInside) {
+                            this.shapeToggleBtn.innerHTML = iconInside.outerHTML;
+                        }
+                    }
+                    if (this.shapeWrapper) this.shapeWrapper.classList.remove('open');
+                } else {
+                    btn.classList.add('active');
+                    if (this.shapeWrapper) this.shapeWrapper.classList.remove('open');
+                }
             });
         });
 
