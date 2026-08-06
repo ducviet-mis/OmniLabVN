@@ -38,9 +38,7 @@
         </div>
     </header>
 
-    <!-- ============================================================
-         AUTH VIEW — Đăng nhập / Đăng ký (demo, chưa nối database)
-         ============================================================ -->
+    <!-- AUTH VIEW -->
     <main id="auth-view" class="auth-view">
         <div class="auth-card">
             <div class="auth-card-head">
@@ -74,23 +72,11 @@
                     </span>
                 </label>
 
-                <div class="field-row-between">
-                    <label class="checkbox-row">
-                        <input type="checkbox" id="login-remember">
-                        <span>Ghi nhớ đăng nhập</span>
-                    </label>
-                </div>
-
                 <p class="form-error" id="login-error"></p>
 
                 <button type="submit" class="primary-btn full">
                     <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập
                 </button>
-
-                <p class="auth-hint">
-                    Bản demo — chưa nối database. Dùng thử tài khoản
-                    <code>demo</code> / mật khẩu <code>demo123</code>, hoặc tạo tài khoản mới ở tab Đăng ký.
-                </p>
             </form>
 
             <!-- REGISTER FORM -->
@@ -99,7 +85,7 @@
                     <span class="field-label">Tên tài khoản</span>
                     <span class="field-input">
                         <i class="fa-solid fa-user"></i>
-                        <input type="text" id="reg-username" autocomplete="username" placeholder="VD: nguyenvana" required>
+                        <input type="text" id="reg-username" autocomplete="username" placeholder="VD: ducviet" required>
                     </span>
                 </label>
 
@@ -121,40 +107,16 @@
                     </span>
                 </label>
 
-                <div class="field-2col">
-                    <label class="field">
-                        <span class="field-label">Số điện thoại</span>
-                        <span class="field-input">
-                            <i class="fa-solid fa-phone"></i>
-                            <input type="tel" id="reg-phone" autocomplete="tel" placeholder="09xxxxxxxx" required>
-                        </span>
-                    </label>
-
-                    <label class="field">
-                        <span class="field-label">Ngày sinh</span>
-                        <span class="field-input">
-                            <i class="fa-solid fa-cake-candles"></i>
-                            <input type="date" id="reg-dob" autocomplete="bday" required>
-                        </span>
-                    </label>
-                </div>
-
                 <p class="form-error" id="register-error"></p>
 
                 <button type="submit" class="primary-btn full">
                     <i class="fa-solid fa-user-plus"></i> Tạo tài khoản
                 </button>
-
-                <p class="auth-hint">
-                    Thông tin đăng ký hiện được lưu tạm trên trình duyệt của bạn (demo) — sẽ được thay bằng cơ sở dữ liệu thật sau.
-                </p>
             </form>
         </div>
     </main>
 
-    <!-- ============================================================
-         DASHBOARD VIEW — Thư mục &amp; các ghi chú đã lưu (demo)
-         ============================================================ -->
+    <!-- DASHBOARD VIEW -->
     <main id="dashboard-view" class="dashboard-view hidden">
         <div class="dashboard-inner">
 
@@ -184,7 +146,7 @@
                     <span class="stat-icon muted"><i class="fa-solid fa-database"></i></span>
                     <div>
                         <span class="stat-value" id="stat-storage">0 KB</span>
-                        <span class="stat-label">Dung lượng (demo)</span>
+                        <span class="stat-label">Dung lượng</span>
                     </div>
                 </div>
             </div>
@@ -208,10 +170,10 @@
                 </div>
             </div>
 
-            <!-- Folder grid (root level) -->
+            <!-- Folder grid -->
             <section id="folder-grid" class="card-grid"></section>
 
-            <!-- File grid (inside a folder) -->
+            <!-- File grid -->
             <section id="file-grid" class="card-grid hidden"></section>
 
             <div id="empty-state" class="empty-state hidden">
@@ -221,7 +183,7 @@
         </div>
     </main>
 
-    <!-- Reusable name-prompt dialog (new folder / rename) -->
+    <!-- Dialogs -->
     <div id="prompt-modal" class="dialog-overlay hidden">
         <div class="dialog-box">
             <h3 id="prompt-title"><i class="fa-solid fa-folder-plus"></i> Thư mục mới</h3>
@@ -235,7 +197,6 @@
         </div>
     </div>
 
-    <!-- Reusable confirm dialog (delete) -->
     <div id="confirm-modal" class="dialog-overlay hidden">
         <div class="dialog-box">
             <h3 id="confirm-title"><i class="fa-solid fa-triangle-exclamation"></i> Xác nhận</h3>
@@ -249,6 +210,8 @@
 
     <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
 
+    <!-- Nhúng Supabase SDK -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="home.js"></script>
 </body>
 </html>
