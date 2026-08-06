@@ -280,13 +280,11 @@ class DrawEngine {
 
         this.applyStrokeStyle(pos);
         this.ctx.beginPath();
-        if (this.currentTool === 'highlighter') {
-            const hSize = this.currentLineWidth * 4.5;
-            this.ctx.rect(pos.x - hSize / 2, pos.y - hSize / 2, hSize, hSize);
-        } else {
+        // Loại bỏ việc chấm nét phụ đối với bút Highlight để không bị đốm vuông đè ở 2 đầu
+        if (this.currentTool !== 'highlighter') {
             this.ctx.arc(pos.x, pos.y, (this.currentLineWidth * (pos.pressure || 1)) / 2, 0, Math.PI * 2);
+            this.ctx.fill();
         }
-        this.ctx.fill();
     }
 
     onFrameUpdate() {
@@ -317,8 +315,8 @@ class DrawEngine {
         } else if (this.currentTool === 'highlighter') {
             this.ctx.lineCap = 'butt';
             this.ctx.globalCompositeOperation = 'destination-over';
-            this.ctx.strokeStyle = this.hexToRgba(this.currentColor, 0.5);
-            this.ctx.fillStyle = this.hexToRgba(this.currentColor, 0.5);
+            this.ctx.strokeStyle = this.hexToRgba(this.currentColor, 0.45);
+            this.ctx.fillStyle = this.hexToRgba(this.currentColor, 0.45);
             this.ctx.lineWidth = this.currentLineWidth * 4.5;
         } else if (this.currentTool === 'eraser') {
             this.ctx.lineCap = 'round';
