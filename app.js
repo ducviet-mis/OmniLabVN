@@ -96,6 +96,51 @@ document.addEventListener('DOMContentLoaded', () => {
     const pdfLoading = document.getElementById('pdf-loading');
     const pdfDocName = document.getElementById('pdf-doc-name');
 
+    // ----------------------------------------------------------------------
+    // 2b. HOMEPAGE INTEGRATION — note opened from the dashboard (?fileId=...)
+    //     Demo only: reads/writes the same localStorage records used by
+    //     home.js so a note's title/timestamp stay in sync on the dashboard.
+    // ----------------------------------------------------------------------
+    const noteTitleBadge = document.getElementById('note-title-badge');
+    const noteTitleText = document.getElementById('note-title-text');
+    const activeFileId = new URLSearchParams(window.location.search).get('fileId');
+
+    const getDemoFiles = () => {
+        try { return JSON.parse(localStorage.getItem('omnilab_files') || '[]'); }
+        catch { return []; }
+    };
+    const setDemoFiles = (files) => localStorage.setItem('omnilab_files', JSON.stringify(files));
+
+    const touchActiveFileRecord = () => {
+        if (!activeFileId) return;
+        const files = getDemoFiles();
+        const idx = files.findIndex((f) => f.id === activeFileId);
+        if (idx === -1) return;
+        files[idx].updatedAt = Date.now();
+        const plainLen = (window.richTextEditor ? window.richTextEditor.getPlainText() : '').length;
+        files[idx].sizeKB = Math.max(1, Math.round((plainLen / 1024) * 10) / 10);
+        setDemoFiles(files);
+    };
+
+    if (activeFileId) {
+        const demoRecord = getDemoFiles().find((f) => f.id === activeFileId);
+        if (demoRecord) {
+            noteTitleBadge.classList.remove('hidden');
+            noteTitleText.textContent = demoRecord.title;
+            noteTitleBadge.title = 'Nhấp để đổi tên ghi chú';
+            noteTitleBadge.style.cursor = 'pointer';
+            noteTitleBadge.addEventListener('click', () => {
+                const newTitle = prompt('Đổi tên ghi chú:', demoRecord.title);
+                if (!newTitle || !newTitle.trim()) return;
+                demoRecord.title = newTitle.trim();
+                noteTitleText.textContent = demoRecord.title;
+                const files = getDemoFiles();
+                const idx = files.findIndex((f) => f.id === activeFileId);
+                if (idx > -1) { files[idx].title = demoRecord.title; setDemoFiles(files); }
+            });
+        }
+    }
+
     // In-memory per-page store for direct PDF annotations (pageNum -> dataURL).
     // Reset whenever a new document is loaded.
     let pdfDrawings = new Map();
@@ -576,6 +621,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const canvasData = window.canvasEngine.getCanvasData();
         localStorage.setItem('omnilab_text', textContent);
         localStorage.setItem('omnilab_canvas', canvasData);
+        touchActiveFileRecord();
     };
 
     const markUnsaved = () => {
