@@ -1,15 +1,12 @@
 /**
- * OMNILAB — HOMEPAGE (FIXED SUPABASE AUTH & TAB SWITCHING)
+ * OMNILAB — HOMEPAGE (FIXED SYNTAX ERROR & FULL SUPABASE AUTH)
  */
 
 const SUPABASE_URL = 'https://vnwqhacajbrlmtoixuzy.supabase.co';
-// 💥 DÁN KHÓA anon public CỦA BẠN VÀO DƯỚI ĐÂY:
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZud3FoYWNhamJybG10b2l4dXp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU5OTU2OTEsImV4cCI6MjEwMTU3MTY5MX0.OQZVSpBBYRqcpD-cf7FkOv2iDX20zU5_zZaz1KJuXTA';
 
-let supabase = null;
-if (window.supabase) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-}
+// Khai báo duy nhất 1 lần biến supabaseClient để tránh trùng lặp
+const supabaseClient = window.supabase ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 document.addEventListener('DOMContentLoaded', async () => {
 
@@ -84,7 +81,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const uid = (prefix) => `${prefix}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
 
     // ------------------------------------------------------------------
-    // 1. CHUYỂN TAB ĐĂNG NHẬP / ĐĂNG KÝ (SỬA LỖI KHÔNG CLICK ĐƯỢC)
+    // 1. TAB SWITCHING (ĐĂNG NHẬP <-> ĐĂNG KÝ)
     // ------------------------------------------------------------------
     const authTabs = document.querySelectorAll('.auth-tab');
     const authTabsWrap = document.querySelector('.auth-tabs');
@@ -105,16 +102,16 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (authTabsWrap) authTabsWrap.setAttribute('data-active', targetTab);
 
             if (targetTab === 'login') {
-                loginForm.classList.add('active');
-                registerForm.classList.remove('active');
+                if (loginForm) loginForm.classList.add('active');
+                if (registerForm) registerForm.classList.remove('active');
             } else {
-                loginForm.classList.remove('active');
-                registerForm.classList.add('active');
+                if (loginForm) loginForm.classList.remove('active');
+                if (registerForm) registerForm.classList.add('active');
             }
         });
     });
 
-    // An/Hien mat khau
+    // Ẩn / Hiện Mật khẩu
     document.querySelectorAll('.field-eye').forEach((btn) => {
         btn.addEventListener('click', (e) => {
             e.preventDefault();
@@ -153,7 +150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     // ------------------------------------------------------------------
-    // 3. SUPABASE AUTH: LOGIN & REGISTER
+    // 3. SUPABASE AUTH
     // ------------------------------------------------------------------
     const loginError = document.getElementById('login-error');
     const setLoginError = (msg) => {
@@ -165,7 +162,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (loginForm) {
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!supabase) return alert('Chưa nhúng thư viện Supabase!');
+            if (!supabaseClient) return alert('Chưa tải được thư viện Supabase!');
 
             const username = document.getElementById('login-username').value.trim();
             const password = document.getElementById('login-password').value;
@@ -175,10 +172,9 @@ document.addEventListener('DOMContentLoaded', async () => {
                 return;
             }
 
-            // Quy đổi sang định dạng Email @omnilab.com đồng bộ với database
             const email = username.includes('@') ? username : `${username}@omnilab.com`;
 
-            const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
             if (error) {
                 setLoginError('Sai tên tài khoản hoặc mật khẩu.');
@@ -201,14 +197,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (registerForm) {
         registerForm.addEventListener('submit', async (e) => {
             e.preventDefault();
-            if (!supabase) return alert('Chưa nhúng thư viện Supabase!');
+            if (!supabaseClient) return alert('Chưa tải được thư viện Supabase!');
 
             const username = document.getElementById('reg-username').value.trim();
             const password = document.getElementById('reg-password').value;
             const confirm = document.getElementById('reg-confirm').value;
 
             if (!/^[a-zA-Z0-9_]{3,20}$/.test(username)) {
-                setRegisterError('Tên tài khoản từ 3–20 ký tự, không chứa dấu câu.');
+                setRegisterError('Tên tài khoản từ 3–20 ký tự, không chứa ký tự đặc biệt.');
                 return;
             }
             if (password.length < 6) {
@@ -222,7 +218,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const email = `${username}@omnilab.com`;
 
-            const { data, error } = await supabase.auth.signUp({
+            const { data, error } = await supabaseClient.auth.signUp({
                 email,
                 password,
                 options: { data: { username } }
@@ -235,19 +231,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             setRegisterError('');
             showToast('Tạo tài khoản thành công! Hãy đăng nhập.', 'info', 'fa-user-plus');
-            registerForm.reset();
+            if (registerForm) registerForm.reset();
 
-            // Tự động nhảy sang tab Đăng nhập
             const loginTabBtn = document.querySelector('.auth-tab[data-tab="login"]');
             if (loginTabBtn) loginTabBtn.click();
-            document.getElementById('login-username').value = username;
+            const loginUserInput = document.getElementById('login-username');
+            if (loginUserInput) loginUserInput.value = username;
         });
     }
 
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) {
         btnLogout.addEventListener('click', async () => {
-            if (supabase) await supabase.auth.signOut();
+            if (supabaseClient) await supabaseClient.auth.signOut();
             showToast('Đã đăng xuất.', 'info', 'fa-right-from-bracket');
             showAuthView();
         });
@@ -284,14 +280,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const closeAllItemMenus = () => document.querySelectorAll('.item-menu.open').forEach((m) => m.classList.remove('open'));
 
     const renderDashboard = async () => {
-        if (!supabase) return;
+        if (!supabaseClient) return;
         closeAllItemMenus();
 
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await supabaseClient.auth.getUser();
         if (!user) return showAuthView();
 
-        const { data: folders } = await supabase.from('folders').select('*').eq('user_id', user.id);
-        const { data: files } = await supabase.from('files').select('*').eq('user_id', user.id);
+        const { data: folders } = await supabaseClient.from('folders').select('*').eq('user_id', user.id);
+        const { data: files } = await supabaseClient.from('files').select('*').eq('user_id', user.id);
 
         const allFolders = folders || [];
         const allFiles = files || [];
@@ -371,7 +367,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     e.stopPropagation();
                     const newName = await showPrompt('Đổi tên thư mục', folder.name, 'fa-pen');
                     if (newName) {
-                        await supabase.from('folders').update({ name: newName }).eq('id', folder.id);
+                        await supabaseClient.from('folders').update({ name: newName }).eq('id', folder.id);
                         showToast('Đã đổi tên thư mục.', 'info', 'fa-pen');
                         renderDashboard();
                     }
@@ -380,7 +376,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 menu.querySelector('[data-action="delete"]').onclick = async (e) => {
                     e.stopPropagation();
                     if (await showConfirm(`Xóa thư mục "${folder.name}"?`, 'Xóa thư mục')) {
-                        await supabase.from('folders').delete().eq('id', folder.id);
+                        await supabaseClient.from('folders').delete().eq('id', folder.id);
                         showToast('Đã xóa thư mục.', 'info', 'fa-trash-can');
                         renderDashboard();
                     }
@@ -432,7 +428,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     e.stopPropagation();
                     const newTitle = await showPrompt('Đổi tên ghi chú', file.title, 'fa-pen');
                     if (newTitle) {
-                        await supabase.from('files').update({ title: newTitle }).eq('id', file.id);
+                        await supabaseClient.from('files').update({ title: newTitle }).eq('id', file.id);
                         showToast('Đã đổi tên ghi chú.', 'info', 'fa-pen');
                         renderDashboard();
                     }
@@ -440,11 +436,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 menu.querySelector('[data-action="delete"]').onclick = async (e) => {
                     e.stopPropagation();
-                    if (await showConfirm(`Xóa ghi chú "${file.title}"?`, 'Xóa ghi chú')) {
-                        await supabase.from('files').delete().eq('id', file.id);
-                        showToast('Đã xóa ghi chú.', 'info', 'fa-trash-can');
-                        renderDashboard();
-                    }
+                    if (await showConfirm(`Xóa ghi chú "${file.title}"?`, 'Xóa ghi chú'));
+                    await supabaseClient.from('files').delete().eq('id', file.id);
+                    showToast('Đã xóa ghi chú.', 'info', 'fa-trash-can');
+                    renderDashboard();
                 };
 
                 if (fileGrid) fileGrid.appendChild(card);
@@ -458,8 +453,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         btnNewFolder.onclick = async () => {
             const name = await showPrompt('Thư mục mới', '', 'fa-folder-plus');
             if (!name) return;
-            const { data: { user } } = await supabase.auth.getUser();
-            await supabase.from('folders').insert([{ id: uid('fold'), user_id: user.id, name }]);
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            await supabaseClient.from('folders').insert([{ id: uid('fold'), user_id: user.id, name }]);
             showToast(`Đã tạo thư mục "${name}".`, 'info', 'fa-folder-plus');
             currentFolderId = null;
             renderDashboard();
@@ -469,14 +464,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnNewNote = document.getElementById('btn-new-note');
     if (btnNewNote) {
         btnNewNote.onclick = async () => {
-            const { data: { user } } = await supabase.auth.getUser();
+            const { data: { user } } = await supabaseClient.auth.getUser();
             let folderId = currentFolderId;
 
             if (!folderId) {
-                const { data: folders } = await supabase.from('folders').select('*').eq('user_id', user.id);
+                const { data: folders } = await supabaseClient.from('folders').select('*').eq('user_id', user.id);
                 if (!folders || folders.length === 0) {
                     folderId = uid('fold');
-                    await supabase.from('folders').insert([{ id: folderId, user_id: user.id, name: 'Chưa phân loại' }]);
+                    await supabaseClient.from('folders').insert([{ id: folderId, user_id: user.id, name: 'Chưa phân loại' }]);
                 } else {
                     showToast('Hãy mở một thư mục trước khi tạo ghi chú mới.', 'error', 'fa-circle-exclamation');
                     return;
@@ -484,7 +479,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
 
             const newFileId = uid('file');
-            await supabase.from('files').insert([{
+            await supabaseClient.from('files').insert([{
                 id: newFileId,
                 user_id: user.id,
                 folder_id: folderId,
@@ -499,9 +494,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (searchInput) searchInput.oninput = (e) => { searchTerm = e.target.value; renderDashboard(); };
     document.onclick = (e) => { if (!e.target.closest('.item-menu-btn')) closeAllItemMenus(); };
 
-    // Kiểm tra đăng nhập khi mở trang
-    if (supabase) {
-        const { data: { session } } = await supabase.auth.getSession();
+    // Kiểm tra Đăng nhập
+    if (supabaseClient) {
+        const { data: { session } } = await supabaseClient.auth.getSession();
         if (session && session.user) {
             showDashboardView(session.user.email);
         } else {
