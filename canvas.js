@@ -6,7 +6,6 @@
 class DrawEngine {
     constructor(opts) {
         this.canvas = opts.canvas;
-        // Loại bỏ desynchronized để tránh bị lỗi màn hình đen trên canvas đè PDF
         this.ctx = this.canvas.getContext('2d');
         this.viewport = opts.viewport || null;
         this.autoResize = !!opts.autoResize;
@@ -20,7 +19,6 @@ class DrawEngine {
         this.startY = 0;
         this.snapshot = null;
 
-        // Tốc độ vẽ tối ưu rAF
         this.rafId = null;
         this.latestPos = null;
 
@@ -131,6 +129,9 @@ class DrawEngine {
 
     setOpen(open) {
         this.dockEl.classList.toggle('open', open);
+        if (this.popover) {
+            this.popover.style.display = open ? 'flex' : 'none';
+        }
         this.canvas.style.pointerEvents = open ? 'auto' : 'none';
         this.canvas.classList.toggle('drawing-active', open);
         if (!open) {
@@ -255,6 +256,14 @@ class DrawEngine {
     }
 
     startDrawing(e) {
+        // Tự động ẩn bảng chọn công cụ lớn khi bắt đầu đặt tay vẽ
+        if (this.popover) {
+            this.popover.style.display = 'none';
+        }
+        if (this.shapeWrapper) {
+            this.shapeWrapper.classList.remove('open');
+        }
+
         this.isDrawing = true;
         this.hasStrokeChange = false;
         const pos = this.getPointerPos(e);
