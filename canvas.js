@@ -1,12 +1,13 @@
 /**
  * OMNILAB - HIGH-PERFORMANCE CANVAS DRAWING ENGINE
- * Optimized with requestAnimationFrame & Fixed Data Loading/Resizing Bug.
+ * Optimized rendering, sub-menu shapes & fixed PDF overlay transparency.
  */
 
 class DrawEngine {
     constructor(opts) {
         this.canvas = opts.canvas;
-        this.ctx = this.canvas.getContext('2d', { alpha: true, desynchronized: true });
+        // Loại bỏ desynchronized để tránh bị lỗi màn hình đen trên canvas đè PDF
+        this.ctx = this.canvas.getContext('2d');
         this.viewport = opts.viewport || null;
         this.autoResize = !!opts.autoResize;
         this.dockEl = opts.dockEl;
@@ -637,12 +638,10 @@ class DrawEngine {
         return this.canvas.toDataURL('image/png');
     }
 
-    // FIX TRIỆT ĐỂ LỖI KHI LOAD LẠI BÀI HỌC TỪ SUPABASE
     loadCanvasData(dataUrl) {
         if (!dataUrl || dataUrl.trim() === '') return;
         const img = new Image();
         img.onload = () => {
-            // Đồng bộ kích thước Canvas nếu ảnh lớn hơn
             if (this.viewport) {
                 const targetW = Math.max(this.viewport.scrollWidth, this.viewport.clientWidth, img.width);
                 const targetH = Math.max(this.viewport.scrollHeight, this.viewport.clientHeight, img.height);
@@ -650,7 +649,6 @@ class DrawEngine {
                 this.canvas.height = targetH;
             }
 
-            // Xóa sạch nét cũ hoàn toàn trước khi vẽ ảnh đã lưu
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
             this.ctx.drawImage(img, 0, 0);
         };
