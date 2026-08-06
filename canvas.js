@@ -1,11 +1,12 @@
 /**
- * OMNILAB - DRAWING ENGINE (SUB-MENU SHAPES & CORRECTED MAPPINGS)
+ * OMNILAB - HIGH-PERFORMANCE CANVAS DRAWING ENGINE
+ * Optimized with requestAnimationFrame & smooth quadratic interpolation.
  */
 
 class DrawEngine {
     constructor(opts) {
         this.canvas = opts.canvas;
-        this.ctx = this.canvas.getContext('2d');
+        this.ctx = this.canvas.getContext('2d', { alpha: true, desynchronized: true });
         this.viewport = opts.viewport || null;
         this.autoResize = !!opts.autoResize;
         this.dockEl = opts.dockEl;
@@ -18,9 +19,13 @@ class DrawEngine {
         this.startY = 0;
         this.snapshot = null;
 
+        // Tốc độ vẽ tối ưu rAF
+        this.rafId = null;
+        this.latestPos = null;
+
         this.undoStack = [];
         this.redoStack = [];
-        this.maxHistory = 25;
+        this.maxHistory = 20;
         this.hasStrokeChange = false;
 
         this.canvas.style.pointerEvents = 'none';
@@ -55,16 +60,36 @@ class DrawEngine {
     }
 
     initCanvasAutoResize() {
+        let resizeTimeout;
         const resize = () => {
-            const tempImage = this.safeGetImage();
-            this.canvas.width = Math.max(this.viewport.scrollWidth, this.viewport.clientWidth);
-            this.canvas.height = Math.max(this.viewport.scrollHeight, this.viewport.clientHeight);
-            if (tempImage) this.ctx.putImageData(tempImage, 0, 0);
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(() => {
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = this.canvas.width;
+                tempCanvas.height = this.canvas.height;
+                const tempCtx = tempCanvas.getContext('2d');
+                if (this.canvas.width > 0 && this.canvas.height > 0) {
+                    tempCtx.drawImage(this.canvas, 0, 0);
+                }
+
+                const newW = Math.max(this.viewport.scrollWidth, this.viewport.clientWidth);
+                const newH = Math.max(this.viewport.scrollHeight, this.viewport.clientHeight);
+
+                if (this.canvas.width !== newW || this.canvas.height !== newH) {
+                    this.canvas.width = newW;
+                    this.canvas.height = newH;
+                    if (tempCanvas.width > 0) {
+                        this.ctx.drawImage(tempCanvas, 0, 0);
+                    }
+                }
+            }, 100);
         };
-        resize();
+
         window.addEventListener('resize', resize);
-        const resizeObserver = new ResizeObserver(() => resize());
-        resizeObserver.observe(this.viewport);
+        if (this.viewport) {
+            const resizeObserver = new ResizeObserver(() => resize());
+            resizeObserver.observe(this.viewport);
+        }
     }
 
     safeGetImage() {
@@ -119,7 +144,6 @@ class DrawEngine {
     }
 
     initToolEvents() {
-        // Toggle Submenu chọn hình học
         if (this.shapeToggleBtn && this.shapeWrapper) {
             this.shapeToggleBtn.addEventListener('click', (e) => {
                 e.stopPropagation();
@@ -128,7 +152,7 @@ class DrawEngine {
         }
 
         this.toolButtons.forEach((btn) => {
-            btn.addEventListener('click', (e) => {
+            btn.addEventListener('click', () => {
                 const tool = btn.dataset.tool;
                 if (tool === 'graph') {
                     if (window.onGraphToolClick) window.onGraphToolClick(this);
@@ -136,12 +160,9 @@ class DrawEngine {
                 }
 
                 this.currentTool = tool;
-
-                // Cập nhật trạng thái active cho nút
                 this.toolButtons.forEach((b) => b.classList.remove('active'));
                 if (this.shapeToggleBtn) this.shapeToggleBtn.classList.remove('active');
 
-                // Nếu chọn hình nằm trong Submenu, đổi Icon nút chính và Active nút Submenu
                 if (btn.closest('.shape-submenu')) {
                     if (this.shapeToggleBtn) {
                         this.shapeToggleBtn.classList.add('active');
@@ -178,19 +199,24 @@ class DrawEngine {
         this.canvas.addEventListener('pointerdown', (e) => {
             if (!this.isOpen()) return;
             e.preventDefault();
-            try { this.canvas.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+            try { this.canvas.setPointerCapture(e.pointerId); } catch {}
             this.startDrawing(e);
         });
 
         this.canvas.addEventListener('pointermove', (e) => {
             this.updateCursorDot(e);
-            if (!this.isOpen()) return;
-            if (this.isDrawing) e.preventDefault();
-            this.draw(e);
+            if (!this.isOpen() || !this.isDrawing) return;
+            e.preventDefault();
+            this.latestPos = this.getPointerPos(e);
+
+            if (!this.rafId) {
+                this.rafId = requestAnimationFrame(() => this.onFrameUpdate());
+            }
         });
 
-        this.canvas.addEventListener('pointerup', () => this.stopDrawing());
-        this.canvas.addEventListener('pointercancel', () => this.stopDrawing());
+        const stopHandler = () => this.stopDrawing();
+        this.canvas.addEventListener('pointerup', stopHandler);
+        this.canvas.addEventListener('pointercancel', stopHandler);
         this.canvas.addEventListener('pointerleave', () => { this.cursorDot.style.display = 'none'; });
         this.canvas.addEventListener('pointerenter', () => { if (this.isOpen()) this.cursorDot.style.display = 'block'; });
     }
@@ -239,15 +265,32 @@ class DrawEngine {
         this.points = [pos];
         this.startX = pos.x;
         this.startY = pos.y;
+        this.latestPos = pos;
 
-        this.snapshot = this.safeGetImage();
-        this.pushHistory();
+        // Lưu trạng thái trước khi vẽ hình (chỉ hình mới cần chụp snapshot)
+        if (!['pen', 'highlighter', 'eraser'].includes(this.currentTool)) {
+            this.snapshot = this.safeGetImage();
+        }
 
         this.applyStrokeStyle(pos);
         this.ctx.beginPath();
-        this.ctx.moveTo(pos.x, pos.y);
-        this.ctx.lineTo(pos.x + 0.01, pos.y + 0.01);
-        this.ctx.stroke();
+        this.ctx.arc(pos.x, pos.y, (this.currentLineWidth * (pos.pressure || 1)) / 2, 0, Math.PI * 2);
+        this.ctx.fill();
+    }
+
+    onFrameUpdate() {
+        this.rafId = null;
+        if (!this.isDrawing || !this.latestPos) return;
+
+        this.hasStrokeChange = true;
+        const pos = this.latestPos;
+
+        if (['pen', 'highlighter', 'eraser'].includes(this.currentTool)) {
+            this.drawSmoothFreehand(pos);
+        } else {
+            if (this.snapshot) this.ctx.putImageData(this.snapshot, 0, 0);
+            this.drawShapePreview(pos);
+        }
     }
 
     applyStrokeStyle(pos) {
@@ -258,27 +301,16 @@ class DrawEngine {
         if (this.currentTool === 'pen') {
             this.ctx.globalCompositeOperation = 'source-over';
             this.ctx.strokeStyle = this.currentColor;
+            this.ctx.fillStyle = this.currentColor;
             this.ctx.lineWidth = this.currentLineWidth * pressureScale;
         } else if (this.currentTool === 'highlighter') {
             this.ctx.globalCompositeOperation = 'source-over';
-            this.ctx.strokeStyle = this.hexToRgba(this.currentColor, 0.4);
+            this.ctx.strokeStyle = this.hexToRgba(this.currentColor, 0.35);
+            this.ctx.fillStyle = this.hexToRgba(this.currentColor, 0.35);
             this.ctx.lineWidth = this.currentLineWidth * 3;
         } else if (this.currentTool === 'eraser') {
             this.ctx.globalCompositeOperation = 'destination-out';
             this.ctx.lineWidth = this.currentLineWidth * 4;
-        }
-    }
-
-    draw(e) {
-        if (!this.isDrawing) return;
-        const pos = this.getPointerPos(e);
-        this.hasStrokeChange = true;
-
-        if (['pen', 'highlighter', 'eraser'].includes(this.currentTool)) {
-            this.drawSmoothFreehand(pos);
-        } else {
-            if (this.snapshot) this.ctx.putImageData(this.snapshot, 0, 0);
-            this.drawShapePreview(pos);
         }
     }
 
@@ -288,23 +320,27 @@ class DrawEngine {
         this.applyStrokeStyle(pos);
 
         if (len < 3) {
-            const [p0, p1] = this.points;
+            const p1 = this.points[0];
+            const p2 = this.points[1] || pos;
             this.ctx.beginPath();
-            this.ctx.moveTo(p0.x, p0.y);
-            this.ctx.lineTo(p1.x, p1.y);
+            this.ctx.moveTo(p1.x, p1.y);
+            this.ctx.lineTo(p2.x, p2.y);
             this.ctx.stroke();
             return;
         }
 
-        const p0 = this.points[len - 3];
         const p1 = this.points[len - 2];
         const p2 = this.points[len - 1];
-        const mid1 = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
-        const mid2 = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2;
+
+        const prevP = this.points[len - 3];
+        const prevMidX = (prevP.x + p1.x) / 2;
+        const prevMidY = (prevP.y + p1.y) / 2;
 
         this.ctx.beginPath();
-        this.ctx.moveTo(mid1.x, mid1.y);
-        this.ctx.quadraticCurveTo(p1.x, p1.y, mid2.x, mid2.y);
+        this.ctx.moveTo(prevMidX, prevMidY);
+        this.ctx.quadraticCurveTo(p1.x, p1.y, midX, midY);
         this.ctx.stroke();
     }
 
@@ -450,14 +486,12 @@ class DrawEngine {
         const originX = this.startX;
         const originY = this.startY + height;
 
-        // X-Axis
         this.ctx.moveTo(originX - 20, originY);
         this.ctx.lineTo(originX + Math.max(width, 40), originY);
         this.ctx.lineTo(originX + Math.max(width, 40) - 8, originY - 5);
         this.ctx.moveTo(originX + Math.max(width, 40), originY);
         this.ctx.lineTo(originX + Math.max(width, 40) - 8, originY + 5);
 
-        // Y-Axis
         this.ctx.moveTo(originX, originY + 20);
         this.ctx.lineTo(originX, originY - Math.max(Math.abs(height), 40));
         this.ctx.lineTo(originX - 5, originY - Math.max(Math.abs(height), 40) + 8);
@@ -486,7 +520,6 @@ class DrawEngine {
         const step = 0.5;
 
         this.ctx.globalCompositeOperation = 'source-over';
-
         this.ctx.strokeStyle = '#94a3b8';
         this.ctx.lineWidth = 1.5;
         this.ctx.beginPath();
@@ -528,14 +561,24 @@ class DrawEngine {
     stopDrawing() {
         if (!this.isDrawing) return;
         this.isDrawing = false;
+        if (this.rafId) {
+            cancelAnimationFrame(this.rafId);
+            this.rafId = null;
+        }
+
         this.points = [];
+        this.snapshot = null;
         this.ctx.beginPath();
-        if (this.hasStrokeChange) this.onStrokeEnd();
+
+        if (this.hasStrokeChange) {
+            this.pushHistory();
+            this.onStrokeEnd();
+        }
     }
 
     pushHistory() {
         try {
-            this.undoStack.push(this.canvas.toDataURL());
+            this.undoStack.push(this.canvas.toDataURL('image/png'));
             if (this.undoStack.length > this.maxHistory) this.undoStack.shift();
             this.redoStack = [];
             this.updateHistoryButtons();
@@ -544,7 +587,7 @@ class DrawEngine {
 
     undo() {
         if (!this.undoStack.length) return;
-        const current = this.canvas.toDataURL();
+        const current = this.canvas.toDataURL('image/png');
         const prev = this.undoStack.pop();
         this.redoStack.push(current);
         this.restoreFromDataUrl(prev);
@@ -554,7 +597,7 @@ class DrawEngine {
 
     redo() {
         if (!this.redoStack.length) return;
-        const current = this.canvas.toDataURL();
+        const current = this.canvas.toDataURL('image/png');
         const next = this.redoStack.pop();
         this.undoStack.push(current);
         this.restoreFromDataUrl(next);
@@ -596,7 +639,7 @@ class DrawEngine {
     }
 
     getCanvasData() {
-        return this.canvas.toDataURL();
+        return this.canvas.toDataURL('image/png');
     }
 
     loadCanvasData(dataUrl) {
