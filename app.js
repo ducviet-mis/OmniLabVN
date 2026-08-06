@@ -101,6 +101,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     let scale = 1.2;
     let currentUploadedPdfFile = null;
 
+    // Chế độ "Vừa khung": khi bật (mặc định), kích thước PDF tự tính lại theo
+    // bề rộng cột PDF mỗi khi khung được kéo giãn. Khi người dùng tự chỉnh
+    // zoom (thanh trượt / nút +-), chế độ này tắt để giữ nguyên mức zoom họ chọn.
+    let autoFitEnabled = true;
+    const PDF_FIT_PADDING = 48; // khoảng đệm ước lượng quanh trang PDF trong khung nhìn
+
     const pdfCanvas = document.getElementById('pdf-canvas');
     const pdfCtx = pdfCanvas ? pdfCanvas.getContext('2d') : null;
     const pdfPageStage = document.getElementById('pdf-page-stage');
@@ -108,6 +114,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const pdfPlaceholder = document.getElementById('pdf-placeholder');
     const pdfLoading = document.getElementById('pdf-loading');
     const pdfDocName = document.getElementById('pdf-doc-name');
+    const pdfRenderWrapper = document.getElementById('pdf-render-wrapper');
 
     const activeFileId = new URLSearchParams(window.location.search).get('fileId');
     const noteTitleBadge = document.getElementById('note-title-badge');
@@ -162,6 +169,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     const pdfPane = document.getElementById('pdf-container');
     let isResizing = false;
 
+    let resizeRenderQueued = false;
+
+    // Trong lúc kéo thanh chia, nếu "Vừa khung" đang bật thì tính lại kích
+    // thước PDF theo bề rộng cột mới — throttle bằng rAF để mượt, không giật.
+    const requestFitRerenderOnDrag = () => {
+        if (!autoFitEnabled || !pdfDoc || resizeRenderQueued) return;
+        resizeRenderQueued = true;
+        requestAnimationFrame(() => {
+            resizeRenderQueued = false;
+            if (typeof queueRenderPage === 'function') queueRenderPage(pageNum);
+        });
+    };
+
     if (resizer && pdfPane) {
         resizer.addEventListener('mousedown', () => {
             isResizing = true;
@@ -177,6 +197,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             if (newWidth > 20 && newWidth < 80) {
                 pdfPane.style.width = `${newWidth}%`;
+                requestFitRerenderOnDrag();
             }
         });
 
@@ -184,9 +205,23 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (isResizing) {
                 isResizing = false;
                 document.body.style.cursor = 'default';
+                // Render lại lần cuối ở kích thước chính xác sau khi thả chuột
+                if (autoFitEnabled && pdfDoc && typeof queueRenderPage === 'function') {
+                    queueRenderPage(pageNum);
+                }
             }
         });
     }
+
+    // Cửa sổ trình duyệt đổi kích thước cũng cần tính lại "Vừa khung"
+    let windowResizeTimer = null;
+    window.addEventListener('resize', () => {
+        if (!autoFitEnabled || !pdfDoc) return;
+        clearTimeout(windowResizeTimer);
+        windowResizeTimer = setTimeout(() => {
+            if (typeof queueRenderPage === 'function') queueRenderPage(pageNum);
+        }, 120);
+    });
 
     // ----------------------------------------------------------------------
     // 3B. VIEW MODE SWITCHER — Song song / Chỉ PDF / Chỉ Ghi chú
@@ -275,10 +310,25 @@ document.addEventListener('DOMContentLoaded', async () => {
     // ----------------------------------------------------------------------
     // 4. PDF RENDER ENGINE
     // ----------------------------------------------------------------------
+    // Tính scale để trang PDF vừa khít bề rộng khung nhìn hiện tại (cột PDF).
+    const computeFitScale = (page) => {
+        if (!pdfRenderWrapper) return scale;
+        const wrapperWidth = pdfRenderWrapper.clientWidth;
+        if (!wrapperWidth) return scale;
+        const baseWidth = page.getViewport({ scale: 1 }).width;
+        if (!baseWidth) return scale;
+        const fitted = (wrapperWidth - PDF_FIT_PADDING) / baseWidth;
+        return Math.max(0.3, Math.min(3, fitted));
+    };
+
     const renderPage = (num) => {
         if (!pdfDoc || !pdfCtx) return;
         pageRendering = true;
         pdfDoc.getPage(num).then((page) => {
+            if (autoFitEnabled) {
+                scale = computeFitScale(page);
+                updateZoomUI();
+            }
             const viewport = page.getViewport({ scale });
             pdfCanvas.height = viewport.height;
             pdfCanvas.width = viewport.width;
@@ -405,24 +455,58 @@ document.addEventListener('DOMContentLoaded', async () => {
     const btnZoomIn = document.getElementById('pdf-zoom-in');
     const btnZoomOut = document.getElementById('pdf-zoom-out');
     const zoomLevelLabel = document.getElementById('pdf-zoom-level');
+    const zoomSlider = document.getElementById('pdf-zoom-slider');
+    const btnZoomFit = document.getElementById('pdf-zoom-fit');
+
+    // Đồng bộ nhãn %, thanh trượt và trạng thái nút "Vừa khung" với `scale` hiện tại
+    function updateZoomUI() {
+        const pct = Math.round(scale * 100);
+        if (zoomLevelLabel) zoomLevelLabel.textContent = `${pct}%`;
+        if (zoomSlider) zoomSlider.value = Math.max(30, Math.min(300, pct));
+        if (btnZoomFit) btnZoomFit.classList.toggle('active-fit', autoFitEnabled);
+    }
+    window.updateZoomUI = updateZoomUI;
+
+    // Đặt một mức zoom cụ thể (kéo thanh trượt, bấm nút, hoặc lăn chuột) —
+    // luôn tắt "Vừa khung" vì đây là lựa chọn kích thước thủ công của người dùng.
+    function setManualScale(newScale) {
+        if (!pdfDoc) return;
+        savePdfPageDrawing(pageNum);
+        autoFitEnabled = false;
+        scale = Math.max(0.3, Math.min(3, newScale));
+        updateZoomUI();
+        queueRenderPage(pageNum);
+    }
 
     if (btnZoomIn) {
-        btnZoomIn.onclick = () => {
-            if (!pdfDoc || scale >= 3) return;
+        btnZoomIn.onclick = () => setManualScale(scale + 0.1);
+    }
+    if (btnZoomOut) {
+        btnZoomOut.onclick = () => setManualScale(scale - 0.1);
+    }
+    if (zoomSlider) {
+        // 'input' bắn liên tục khi kéo -> phóng/thu tự do theo đúng vị trí con trượt
+        zoomSlider.addEventListener('input', () => {
+            setManualScale(parseInt(zoomSlider.value, 10) / 100);
+        });
+    }
+    if (btnZoomFit) {
+        btnZoomFit.onclick = () => {
+            if (!pdfDoc) return;
             savePdfPageDrawing(pageNum);
-            scale += 0.2;
-            if (zoomLevelLabel) zoomLevelLabel.textContent = `${Math.round(scale * 100)}%`;
+            autoFitEnabled = true;
             queueRenderPage(pageNum);
         };
     }
-    if (btnZoomOut) {
-        btnZoomOut.onclick = () => {
-            if (!pdfDoc || scale <= 0.6) return;
-            savePdfPageDrawing(pageNum);
-            scale -= 0.2;
-            if (zoomLevelLabel) zoomLevelLabel.textContent = `${Math.round(scale * 100)}%`;
-            queueRenderPage(pageNum);
-        };
+
+    // Ctrl/Cmd + lăn chuột trên trang PDF để phóng to/thu nhỏ tự do, không theo bước cố định
+    if (pdfRenderWrapper) {
+        pdfRenderWrapper.addEventListener('wheel', (e) => {
+            if (!(e.ctrlKey || e.metaKey) || !pdfDoc) return;
+            e.preventDefault();
+            const delta = -e.deltaY * 0.0015; // hệ số mượt, tỉ lệ theo tốc độ lăn chuột
+            setManualScale(scale + scale * delta);
+        }, { passive: false });
     }
 
     // Điều hướng PDF bằng phím mũi tên (chỉ khi không gõ trong ô ghi chú)
