@@ -1,6 +1,6 @@
 /**
  * OMNILAB - HIGH-PERFORMANCE CANVAS DRAWING ENGINE
- * Optimized with requestAnimationFrame & smooth quadratic interpolation.
+ * Optimized with requestAnimationFrame & Fixed Data Loading/Resizing Bug.
  */
 
 class DrawEngine {
@@ -64,22 +64,17 @@ class DrawEngine {
         const resize = () => {
             clearTimeout(resizeTimeout);
             resizeTimeout = setTimeout(() => {
-                const tempCanvas = document.createElement('canvas');
-                tempCanvas.width = this.canvas.width;
-                tempCanvas.height = this.canvas.height;
-                const tempCtx = tempCanvas.getContext('2d');
-                if (this.canvas.width > 0 && this.canvas.height > 0) {
-                    tempCtx.drawImage(this.canvas, 0, 0);
-                }
+                if (!this.viewport) return;
 
                 const newW = Math.max(this.viewport.scrollWidth, this.viewport.clientWidth);
                 const newH = Math.max(this.viewport.scrollHeight, this.viewport.clientHeight);
 
                 if (this.canvas.width !== newW || this.canvas.height !== newH) {
+                    const tempImage = this.safeGetImage();
                     this.canvas.width = newW;
                     this.canvas.height = newH;
-                    if (tempCanvas.width > 0) {
-                        this.ctx.drawImage(tempCanvas, 0, 0);
+                    if (tempImage) {
+                        this.ctx.putImageData(tempImage, 0, 0);
                     }
                 }
             }, 100);
@@ -267,7 +262,6 @@ class DrawEngine {
         this.startY = pos.y;
         this.latestPos = pos;
 
-        // Lưu trạng thái trước khi vẽ hình (chỉ hình mới cần chụp snapshot)
         if (!['pen', 'highlighter', 'eraser'].includes(this.currentTool)) {
             this.snapshot = this.safeGetImage();
         }
@@ -606,10 +600,11 @@ class DrawEngine {
     }
 
     restoreFromDataUrl(dataUrl) {
+        if (!dataUrl) return;
         const img = new Image();
         img.onload = () => {
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            this.ctx.drawImage(img, 0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.drawImage(img, 0, 0);
         };
         img.src = dataUrl;
     }
@@ -642,12 +637,22 @@ class DrawEngine {
         return this.canvas.toDataURL('image/png');
     }
 
+    // FIX TRIỆT ĐỂ LỖI KHI LOAD LẠI BÀI HỌC TỪ SUPABASE
     loadCanvasData(dataUrl) {
-        if (!dataUrl) return;
+        if (!dataUrl || dataUrl.trim() === '') return;
         const img = new Image();
         img.onload = () => {
+            // Đồng bộ kích thước Canvas nếu ảnh lớn hơn
+            if (this.viewport) {
+                const targetW = Math.max(this.viewport.scrollWidth, this.viewport.clientWidth, img.width);
+                const targetH = Math.max(this.viewport.scrollHeight, this.viewport.clientHeight, img.height);
+                this.canvas.width = targetW;
+                this.canvas.height = targetH;
+            }
+
+            // Xóa sạch nét cũ hoàn toàn trước khi vẽ ảnh đã lưu
             this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-            this.ctx.drawImage(img, 0, 0, this.canvas.width, this.canvas.height);
+            this.ctx.drawImage(img, 0, 0);
         };
         img.src = dataUrl;
     }
