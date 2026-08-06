@@ -2,16 +2,12 @@
  * OMNILAB - RICH TEXT EDITOR ENGINE
  * Fully manages formatting, font selection, alignments, lists, line height,
  * keyboard shortcuts, undo/redo, and a quick scientific-symbol palette.
- * (Fixed selection loss and pixel font-size formatting issues)
  */
 
 class RichTextEditor {
     constructor() {
         this.editor = document.getElementById('text-editor');
-        this.savedRange = null;
-
         this.initControls();
-        this.initSelectionTracker();
         this.initEvents();
         this.initSymbolPalette();
     }
@@ -41,48 +37,10 @@ class RichTextEditor {
         this.btnRedo = document.getElementById('btn-redo-text');
     }
 
-    // --- Giữ vùng bôi đen (Selection Tracker) ---
-    initSelectionTracker() {
-        const saveSelection = () => {
-            const sel = window.getSelection();
-            if (sel.rangeCount > 0) {
-                const range = sel.getRangeAt(0);
-                if (this.editor.contains(range.commonAncestorContainer)) {
-                    this.savedRange = range.cloneRange();
-                }
-            }
-        };
-
-        this.editor.addEventListener('mouseup', saveSelection);
-        this.editor.addEventListener('keyup', saveSelection);
-        this.editor.addEventListener('touchend', saveSelection);
-
-        // Ngăn toolbar làm mất vùng chọn
-        const toolbar = document.getElementById('editor-toolbar');
-        if (toolbar) {
-            toolbar.addEventListener('mousedown', (e) => {
-                saveSelection();
-            });
-        }
-    }
-
-    restoreSelection() {
-        if (!this.savedRange) return false;
-        const sel = window.getSelection();
-        sel.removeAllRanges();
-        sel.addRange(this.savedRange);
-        return true;
-    }
-
     initEvents() {
-        // Font Family & Font Size Execution
-        this.fontFamilySelect.addEventListener('change', (e) => {
-            this.setFontFamily(e.target.value);
-        });
-
-        this.fontSizeSelect.addEventListener('change', (e) => {
-            this.setFontSize(e.target.value);
-        });
+        // Executive Commands Execution
+        this.fontFamilySelect.addEventListener('change', (e) => this.exec('fontName', e.target.value));
+        this.fontSizeSelect.addEventListener('change', (e) => this.setFontSize(e.target.value));
 
         this.btnBold.addEventListener('click', () => this.exec('bold'));
         this.btnItalic.addEventListener('click', () => this.exec('italic'));
@@ -107,7 +65,8 @@ class RichTextEditor {
         this.btnUndo.addEventListener('click', () => this.exec('undo'));
         this.btnRedo.addEventListener('click', () => this.exec('redo'));
 
-        // Explicit keyboard shortcuts
+        // Explicit keyboard shortcuts (kept in addition to native contenteditable behaviour
+        // for consistency across browsers)
         this.editor.addEventListener('keydown', (e) => {
             const ctrl = e.ctrlKey || e.metaKey;
             if (!ctrl) return;
@@ -184,79 +143,26 @@ class RichTextEditor {
     }
 
     exec(command, value = null) {
-        this.editor.focus();
-        this.restoreSelection();
         document.execCommand(command, false, value);
         this.editor.focus();
-        if (window.scheduleAutosave) window.scheduleAutosave();
-    }
-
-    setFontFamily(fontFamily) {
-        this.editor.focus();
-        this.restoreSelection();
-
-        const selection = window.getSelection();
-        if (!selection.rangeCount || selection.isCollapsed) {
-            this.editor.style.fontFamily = fontFamily;
-            return;
-        }
-
-        const range = selection.getRangeAt(0);
-        const span = document.createElement('span');
-        span.style.fontFamily = fontFamily;
-
-        try {
-            span.appendChild(range.extractContents());
-            range.insertNode(span);
-
-            // Giữ lại bôi đen sau khi áp dụng font
-            const newRange = document.createRange();
-            newRange.selectNodeContents(span);
-            selection.removeAllRanges();
-            selection.addRange(newRange);
-            this.savedRange = newRange.cloneRange();
-        } catch {
-            document.execCommand('fontName', false, fontFamily);
-        }
-
-        this.editor.focus();
-        if (window.scheduleAutosave) window.scheduleAutosave();
     }
 
     setFontSize(pixelSize) {
-        this.editor.focus();
-        this.restoreSelection();
-
+        // Custom Font Size Applying Span Wrappers
         const selection = window.getSelection();
-        if (!selection.rangeCount || selection.isCollapsed) {
-            this.editor.style.fontSize = pixelSize;
-            return;
-        }
+        if (!selection.rangeCount) return;
 
         const range = selection.getRangeAt(0);
+        if (range.collapsed) return;
+
         const span = document.createElement('span');
         span.style.fontSize = pixelSize;
-
-        try {
-            span.appendChild(range.extractContents());
-            range.insertNode(span);
-
-            // Giữ lại bôi đen sau khi áp dụng size
-            const newRange = document.createRange();
-            newRange.selectNodeContents(span);
-            selection.removeAllRanges();
-            selection.addRange(newRange);
-            this.savedRange = newRange.cloneRange();
-        } catch {}
-
+        span.appendChild(range.extractContents());
+        range.insertNode(span);
         this.editor.focus();
-        if (window.scheduleAutosave) window.scheduleAutosave();
     }
 
     setLineHeight(height) {
-        this.editor.focus();
-        this.restoreSelection();
-
         const selection = window.getSelection();
         if (!selection.rangeCount) return;
 
@@ -274,8 +180,6 @@ class RichTextEditor {
         if (node === this.editor) {
             this.editor.style.lineHeight = height;
         }
-
-        if (window.scheduleAutosave) window.scheduleAutosave();
     }
 
     updateActiveStates() {
@@ -294,24 +198,7 @@ class RichTextEditor {
 
     insertTextAtCursor(text) {
         this.editor.focus();
-        this.restoreSelection();
-
-        const sel = window.getSelection();
-        if (sel.rangeCount > 0) {
-            const range = sel.getRangeAt(0);
-            range.deleteContents();
-            const textNode = document.createTextNode(text);
-            range.insertNode(textNode);
-
-            range.setStartAfter(textNode);
-            range.setEndAfter(textNode);
-            sel.removeAllRanges();
-            sel.addRange(range);
-        } else {
-            this.exec('insertText', text);
-        }
-
-        if (window.scheduleAutosave) window.scheduleAutosave();
+        this.exec('insertText', text);
     }
 
     getContent() {
