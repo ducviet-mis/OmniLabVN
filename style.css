@@ -1034,7 +1034,6 @@ button.active {
 }
 
 .app-header::after {
-    content: "\\2605";
     position: absolute;
     top: 14px;
     left: 46%;
