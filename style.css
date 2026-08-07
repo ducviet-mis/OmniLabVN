@@ -999,6 +999,7 @@ button.active {
     border-radius: 16px;
     box-shadow: var(--shadow-lg);
 }
+.paper-settings-panel.hidden { display: none !important; }
 .paper-settings-heading { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 14px; }
 .paper-settings-heading h3 { margin: 2px 0 0; font-family: var(--font-display); font-size: 16px; }
 .paper-settings-kicker { color: var(--accent); font-size: 9px; font-weight: 700; letter-spacing: 1.2px; }
