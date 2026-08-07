@@ -3,19 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-    <title>OmniLab — Trang chủ</title>
-    <meta name="description" content="OmniLab: nơi lưu trữ và tổ chức các ghi chú khoa học của bạn theo thư mục.">
+    <title>OmniLab â€” Trang chá»§</title>
+    <meta name="description" content="OmniLab: nÆ¡i lÆ°u trá»¯ vÃ  tá»• chá»©c cÃ¡c ghi chÃº khoa há»c cá»§a báº¡n theo thÆ° má»¥c.">
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="stylesheet" href="home.css">
+    <link rel="stylesheet" href="home-2-9.css">
 
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%A7%AA%3C/text%3E%3C/svg%3E">
 </head>
 <body>
+    <div class="patriotic-sky" aria-hidden="true">
+        <span class="firework firework-one"></span>
+        <span class="firework firework-two"></span>
+        <span class="firework firework-three"></span>
+    </div>
 
     <!-- HEADER -->
     <header class="home-header">
@@ -23,17 +28,22 @@
             <span class="logo-mark"><i class="fa-solid fa-flask-vial"></i></span>
             <div class="brand-text">
                 <span class="logo-text">OmniLab</span>
-                <span class="logo-tagline">Không gian học tập khoa học</span>
+                <span class="logo-tagline">KhÃ´ng gian há»c táº­p khoa há»c</span>
             </div>
         </a>
+
+        <div class="national-day-title" aria-label="Chào mừng Quốc khánh Việt Nam 2 tháng 9">
+            <span class="flag-mini" aria-hidden="true">★</span>
+            <span><strong>CHÀO MỪNG QUỐC KHÁNH</strong><small>2 · 9 · VIỆT NAM</small></span>
+        </div>
 
         <div class="header-user hidden" id="header-user">
             <span class="user-chip">
                 <span class="user-avatar" id="user-avatar">?</span>
-                <span class="user-name" id="user-name-label">—</span>
+                <span class="user-name" id="user-name-label">â€”</span>
             </span>
-            <button id="btn-logout" class="ghost-btn" title="Đăng xuất">
-                <i class="fa-solid fa-right-from-bracket"></i><span>Đăng xuất</span>
+            <button id="btn-logout" class="ghost-btn" title="ÄÄƒng xuáº¥t">
+                <i class="fa-solid fa-right-from-bracket"></i><span>ÄÄƒng xuáº¥t</span>
             </button>
         </div>
     </header>
@@ -41,48 +51,52 @@
     <!-- AUTH VIEW -->
     <main id="auth-view" class="auth-view">
         <div class="auth-card">
+            <div class="national-day-ribbon" aria-label="Kỷ niệm 81 năm Quốc khánh Việt Nam">
+                <span class="ribbon-star">★</span>
+                <span>Kỷ niệm Quốc khánh Việt Nam <b>02 · 09</b></span>
+            </div>
             <div class="auth-card-head">
                 <span class="auth-badge"><i class="fa-solid fa-flask-vial"></i></span>
-                <h1>OmniLab</h1>
-                <p>Không gian ghi chép &amp; nghiên cứu khoa học của bạn</p>
+                <h1>OmniLab <span class="gold-star" aria-hidden="true">★</span></h1>
+                <p>KhÃ´ng gian ghi chÃ©p &amp; nghiÃªn cá»©u khoa há»c cá»§a báº¡n</p>
             </div>
 
             <div class="auth-tabs" role="tablist">
-                <button type="button" class="auth-tab active" data-tab="login" role="tab" aria-selected="true">Đăng nhập</button>
-                <button type="button" class="auth-tab" data-tab="register" role="tab" aria-selected="false">Đăng ký</button>
+                <button type="button" class="auth-tab active" data-tab="login" role="tab" aria-selected="true">ÄÄƒng nháº­p</button>
+                <button type="button" class="auth-tab" data-tab="register" role="tab" aria-selected="false">ÄÄƒng kÃ½</button>
                 <span class="auth-tab-thumb" aria-hidden="true"></span>
             </div>
 
             <!-- LOGIN FORM -->
             <form id="login-form" class="auth-form active" novalidate>
                 <label class="field">
-                    <span class="field-label">Tên tài khoản</span>
+                    <span class="field-label">TÃªn tÃ i khoáº£n</span>
                     <span class="field-input">
                         <i class="fa-solid fa-user"></i>
-                        <input type="text" id="login-username" autocomplete="username" placeholder="Nhập tên tài khoản" required>
+                        <input type="text" id="login-username" autocomplete="username" placeholder="Nháº­p tÃªn tÃ i khoáº£n" required>
                     </span>
                 </label>
 
                 <label class="field">
-                    <span class="field-label">Mật khẩu</span>
+                    <span class="field-label">Máº­t kháº©u</span>
                     <span class="field-input">
                         <i class="fa-solid fa-lock"></i>
-                        <input type="password" id="login-password" autocomplete="current-password" placeholder="Nhập mật khẩu" required>
-                        <button type="button" class="field-eye" data-toggle-for="login-password" title="Hiện/ẩn mật khẩu"><i class="fa-solid fa-eye"></i></button>
+                        <input type="password" id="login-password" autocomplete="current-password" placeholder="Nháº­p máº­t kháº©u" required>
+                        <button type="button" class="field-eye" data-toggle-for="login-password" title="Hiá»‡n/áº©n máº­t kháº©u"><i class="fa-solid fa-eye"></i></button>
                     </span>
                 </label>
 
                 <p class="form-error" id="login-error"></p>
 
                 <button type="submit" class="primary-btn full">
-                    <i class="fa-solid fa-right-to-bracket"></i> Đăng nhập
+                    <i class="fa-solid fa-right-to-bracket"></i> ÄÄƒng nháº­p
                 </button>
             </form>
 
             <!-- REGISTER FORM -->
             <form id="register-form" class="auth-form" novalidate>
                 <label class="field">
-                    <span class="field-label">Tên tài khoản</span>
+                    <span class="field-label">TÃªn tÃ i khoáº£n</span>
                     <span class="field-input">
                         <i class="fa-solid fa-user"></i>
                         <input type="text" id="reg-username" autocomplete="username" placeholder="VD: ducviet" required>
@@ -90,27 +104,27 @@
                 </label>
 
                 <label class="field">
-                    <span class="field-label">Mật khẩu</span>
+                    <span class="field-label">Máº­t kháº©u</span>
                     <span class="field-input">
                         <i class="fa-solid fa-lock"></i>
-                        <input type="password" id="reg-password" autocomplete="new-password" placeholder="Tối thiểu 6 ký tự" required>
-                        <button type="button" class="field-eye" data-toggle-for="reg-password" title="Hiện/ẩn mật khẩu"><i class="fa-solid fa-eye"></i></button>
+                        <input type="password" id="reg-password" autocomplete="new-password" placeholder="Tá»‘i thiá»ƒu 6 kÃ½ tá»±" required>
+                        <button type="button" class="field-eye" data-toggle-for="reg-password" title="Hiá»‡n/áº©n máº­t kháº©u"><i class="fa-solid fa-eye"></i></button>
                     </span>
                 </label>
 
                 <label class="field">
-                    <span class="field-label">Xác nhận mật khẩu</span>
+                    <span class="field-label">XÃ¡c nháº­n máº­t kháº©u</span>
                     <span class="field-input">
                         <i class="fa-solid fa-lock"></i>
-                        <input type="password" id="reg-confirm" autocomplete="new-password" placeholder="Nhập lại mật khẩu" required>
-                        <button type="button" class="field-eye" data-toggle-for="reg-confirm" title="Hiện/ẩn mật khẩu"><i class="fa-solid fa-eye"></i></button>
+                        <input type="password" id="reg-confirm" autocomplete="new-password" placeholder="Nháº­p láº¡i máº­t kháº©u" required>
+                        <button type="button" class="field-eye" data-toggle-for="reg-confirm" title="Hiá»‡n/áº©n máº­t kháº©u"><i class="fa-solid fa-eye"></i></button>
                     </span>
                 </label>
 
                 <p class="form-error" id="register-error"></p>
 
                 <button type="submit" class="primary-btn full">
-                    <i class="fa-solid fa-user-plus"></i> Tạo tài khoản
+                    <i class="fa-solid fa-user-plus"></i> Táº¡o tÃ i khoáº£n
                 </button>
             </form>
         </div>
@@ -125,47 +139,47 @@
                     <span class="stat-icon accent"><i class="fa-solid fa-folder-open"></i></span>
                     <div>
                         <span class="stat-value" id="stat-folders">0</span>
-                        <span class="stat-label">Thư mục</span>
+                        <span class="stat-label">ThÆ° má»¥c</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <span class="stat-icon green"><i class="fa-solid fa-file-lines"></i></span>
                     <div>
                         <span class="stat-value" id="stat-files">0</span>
-                        <span class="stat-label">Ghi chú đã lưu</span>
+                        <span class="stat-label">Ghi chÃº Ä‘Ã£ lÆ°u</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <span class="stat-icon amber"><i class="fa-solid fa-clock-rotate-left"></i></span>
                     <div>
-                        <span class="stat-value" id="stat-recent">—</span>
-                        <span class="stat-label">Cập nhật gần nhất</span>
+                        <span class="stat-value" id="stat-recent">â€”</span>
+                        <span class="stat-label">Cáº­p nháº­t gáº§n nháº¥t</span>
                     </div>
                 </div>
                 <div class="stat-card">
                     <span class="stat-icon muted"><i class="fa-solid fa-database"></i></span>
                     <div>
                         <span class="stat-value" id="stat-storage">0 KB</span>
-                        <span class="stat-label">Dung lượng</span>
+                        <span class="stat-label">Dung lÆ°á»£ng</span>
                     </div>
                 </div>
             </div>
 
             <div class="dashboard-toolbar">
-                <nav class="breadcrumb" id="breadcrumb" aria-label="Đường dẫn thư mục">
-                    <button type="button" class="crumb" data-crumb="root"><i class="fa-solid fa-house"></i> Trang chủ</button>
+                <nav class="breadcrumb" id="breadcrumb" aria-label="ÄÆ°á»ng dáº«n thÆ° má»¥c">
+                    <button type="button" class="crumb" data-crumb="root"><i class="fa-solid fa-house"></i> Trang chá»§</button>
                 </nav>
 
                 <div class="toolbar-actions">
                     <span class="field-input search-input">
                         <i class="fa-solid fa-magnifying-glass"></i>
-                        <input type="text" id="search-input" placeholder="Tìm thư mục hoặc ghi chú…">
+                        <input type="text" id="search-input" placeholder="TÃ¬m thÆ° má»¥c hoáº·c ghi chÃºâ€¦">
                     </span>
                     <button type="button" id="btn-new-folder" class="ghost-btn">
-                        <i class="fa-solid fa-folder-plus"></i><span>Thư mục mới</span>
+                        <i class="fa-solid fa-folder-plus"></i><span>ThÆ° má»¥c má»›i</span>
                     </button>
                     <button type="button" id="btn-new-note" class="primary-btn">
-                        <i class="fa-solid fa-plus"></i><span>Ghi chú mới</span>
+                        <i class="fa-solid fa-plus"></i><span>Ghi chÃº má»›i</span>
                     </button>
                 </div>
             </div>
@@ -178,7 +192,7 @@
 
             <div id="empty-state" class="empty-state hidden">
                 <i class="fa-solid fa-inbox"></i>
-                <p>Chưa có gì ở đây. Hãy tạo thư mục hoặc ghi chú mới để bắt đầu.</p>
+                <p>ChÆ°a cÃ³ gÃ¬ á»Ÿ Ä‘Ã¢y. HÃ£y táº¡o thÆ° má»¥c hoáº·c ghi chÃº má»›i Ä‘á»ƒ báº¯t Ä‘áº§u.</p>
             </div>
         </div>
     </main>
@@ -186,32 +200,33 @@
     <!-- Dialogs -->
     <div id="prompt-modal" class="dialog-overlay hidden">
         <div class="dialog-box">
-            <h3 id="prompt-title"><i class="fa-solid fa-folder-plus"></i> Thư mục mới</h3>
+            <h3 id="prompt-title"><i class="fa-solid fa-folder-plus"></i> ThÆ° má»¥c má»›i</h3>
             <div class="dialog-field">
-                <input type="text" id="prompt-input" placeholder="Nhập tên…" autocomplete="off" maxlength="60">
+                <input type="text" id="prompt-input" placeholder="Nháº­p tÃªnâ€¦" autocomplete="off" maxlength="60">
             </div>
             <div class="dialog-actions">
-                <button class="dialog-btn ghost" id="prompt-cancel">Hủy</button>
-                <button class="dialog-btn primary" id="prompt-ok">Lưu</button>
+                <button class="dialog-btn ghost" id="prompt-cancel">Há»§y</button>
+                <button class="dialog-btn primary" id="prompt-ok">LÆ°u</button>
             </div>
         </div>
     </div>
 
     <div id="confirm-modal" class="dialog-overlay hidden">
         <div class="dialog-box">
-            <h3 id="confirm-title"><i class="fa-solid fa-triangle-exclamation"></i> Xác nhận</h3>
+            <h3 id="confirm-title"><i class="fa-solid fa-triangle-exclamation"></i> XÃ¡c nháº­n</h3>
             <p class="dialog-sub" id="confirm-message"></p>
             <div class="dialog-actions">
-                <button class="dialog-btn ghost" id="confirm-cancel">Hủy</button>
-                <button class="dialog-btn danger" id="confirm-ok">Xóa</button>
+                <button class="dialog-btn ghost" id="confirm-cancel">Há»§y</button>
+                <button class="dialog-btn danger" id="confirm-ok">XÃ³a</button>
             </div>
         </div>
     </div>
 
     <div id="toast-stack" class="toast-stack" aria-live="polite"></div>
 
-    <!-- Nhúng Supabase SDK bắt buộc -->
+    <!-- NhÃºng Supabase SDK báº¯t buá»™c -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="home.js"></script>
+    <script src="home-2-9.js"></script>
 </body>
 </html>
+
