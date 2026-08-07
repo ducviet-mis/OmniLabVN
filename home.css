@@ -5,19 +5,19 @@
    ========================================================================== */
 
 :root {
-    --ink-950: #0a0f1a;
-    --ink-900: #0e1526;
-    --ink-800: #16203a;
-    --ink-700: #202b47;
+    --ink-950: #27070b;
+    --ink-900: #4c0c12;
+    --ink-800: #73121b;
+    --ink-700: #8f1821;
 
-    --paper: #f3f7ff;
+    --paper: #fff8eb;
     --paper-panel: #ffffff;
-    --paper-sunken: #eef3fc;
+    --paper-sunken: #fff2d7;
 
-    --accent: #3b82f6;          /* soft blue accent */
-    --accent-hover: #2563eb;
-    --accent-soft: #e8f0ff;
-    --accent-glow: rgba(59, 130, 246, 0.30);
+    --accent: #d71f2b;
+    --accent-hover: #ad101b;
+    --accent-soft: #fff0c7;
+    --accent-glow: rgba(215, 31, 43, 0.28);
 
     --signal-green: #22c55e;
     --signal-amber: #f0a028;
@@ -26,7 +26,7 @@
     --text-ink: #101a2e;
     --text-muted: #5b6577;
     --text-faint: #94a0b3;
-    --border-color: #dfe6f5;
+    --border-color: #f1d8ac;
 
     --shadow-sm: 0 1px 2px rgba(16, 26, 46, 0.05), 0 1px 3px rgba(16, 26, 46, 0.07);
     --shadow-md: 0 6px 18px rgba(16, 26, 46, 0.08);
@@ -555,4 +555,61 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* --------------------------------------------------------------------------
+   QUỐC KHÁNH 2/9 — festive layer
+   -------------------------------------------------------------------------- */
+body {
+    background-image:
+        radial-gradient(circle at 12% 8%, rgba(230, 39, 47, 0.13), transparent 31%),
+        radial-gradient(circle at 88% 92%, rgba(247, 192, 45, 0.16), transparent 33%),
+        linear-gradient(135deg, #fffaf0 0%, #fff4df 100%);
+    overflow-x: hidden;
+}
+
+.patriotic-sky { position: fixed; inset: 68px 0 0; pointer-events: none; overflow: hidden; z-index: -1; }
+.firework { position: absolute; width: 5px; height: 5px; border-radius: 50%; background: #f2c137; box-shadow: 0 -22px 0 -1px #f2c137, 0 22px 0 -1px #f2c137, 22px 0 0 -1px #f2c137, -22px 0 0 -1px #f2c137, 16px 16px 0 -1px #d51d2a, -16px -16px 0 -1px #d51d2a, 16px -16px 0 -1px #d51d2a, -16px 16px 0 -1px #d51d2a; opacity: .34; transform: scale(.7); animation: firework-pulse 3.8s ease-in-out infinite; }
+.firework-one { left: 8%; top: 18%; }
+.firework-two { right: 10%; top: 12%; animation-delay: -1.25s; transform: scale(1.12); }
+.firework-three { right: 20%; bottom: 14%; animation-delay: -2.4s; transform: scale(.48); }
+@keyframes firework-pulse { 50% { opacity: .12; filter: brightness(1.2); } }
+
+.home-header {
+    position: relative; z-index: 2; overflow: hidden;
+    background-color: #920f1c;
+    background-image: linear-gradient(100deg, #6f0b13, #c61d2b 52%, #9d111c);
+    border-bottom: 3px solid #f2c137;
+}
+.home-header::after { content: ''; position: absolute; width: 290px; height: 290px; right: 11%; top: -245px; border: 1px solid rgba(255,214,74,.37); border-radius: 50%; box-shadow: 0 0 0 22px rgba(255,214,74,.06), 0 0 0 44px rgba(255,214,74,.04); pointer-events: none; }
+.logo-mark, .user-avatar { background: linear-gradient(145deg, #f8d957, #e2ad20); color: #8d101a; box-shadow: 0 0 0 1px rgba(255,255,255,.2) inset, 0 4px 14px rgba(68,4,9,.34); }
+.logo-tagline { color: #ffd979; }
+.national-day-title { position: absolute; left: 50%; transform: translateX(-50%); display: inline-flex; align-items: center; gap: 9px; color: #fff6d1; font-size: 10px; letter-spacing: 1.25px; line-height: 1.1; text-align: left; white-space: nowrap; }
+.national-day-title strong, .national-day-title small { display: block; font-weight: 700; }
+.national-day-title small { margin-top: 3px; color: #ffd75c; font-size: 8.5px; letter-spacing: 2.5px; }
+.flag-mini { display: grid; place-items: center; width: 27px; height: 19px; border-radius: 2px; background: #d91f2d; color: #ffe16a; font-size: 13px; box-shadow: 0 1px 5px rgba(0,0,0,.25); }
+
+.auth-card { position: relative; overflow: hidden; border-color: #efd49c; box-shadow: 0 20px 50px rgba(116, 20, 18, .17); }
+.auth-card::before { content: ''; position: absolute; height: 5px; inset: 0 0 auto; background: linear-gradient(90deg, #be1422, #f0bf35 45%, #be1422); }
+.national-day-ribbon { display: flex; align-items: center; justify-content: center; gap: 8px; margin: -15px -14px 18px; padding: 8px 10px; color: #9d1720; background: #fff2ca; border: 1px solid #f2dc9f; border-radius: var(--radius-sm); font-size: 11px; font-weight: 600; }
+.national-day-ribbon b, .ribbon-star, .gold-star { color: #c51a27; }
+.ribbon-star { color: #dca51f; font-size: 16px; line-height: 1; }
+.gold-star { color: #d7a31e; font-size: .75em; vertical-align: 15%; }
+.auth-badge { background: #fff1bd; color: #b81320; box-shadow: inset 0 0 0 1px #f4d987; }
+
+.stat-card { border-color: #efd9b5; }
+.stat-card::before { background: linear-gradient(90deg, #d61d2a, #efc039); }
+.stat-icon.accent { background: #fff0c5; color: #b81320; }
+.dashboard-toolbar .ghost-btn:hover { background-color: #fff0c5; color: #ab111c; border-color: #f4d987; }
+.item-card:hover { border-color: #dfb550; box-shadow: 0 12px 24px rgba(133, 30, 24, .12); }
+.item-icon.folder { background: #fff1be; color: #c48712; }
+.item-icon.file { background: #ffe2d4; color: #be1c2b; }
+.breadcrumb .crumb.current, .crumb:hover { color: #b2121d; }
+.field-input:focus-within { box-shadow: 0 0 0 3px rgba(226, 177, 39, .22); }
+.primary-btn { background: linear-gradient(145deg, #d91f2c, #ad101b); box-shadow: 0 4px 14px rgba(173, 16, 27, .25); }
+
+@media (max-width: 700px) {
+    .national-day-title { display: none; }
+    .home-header { padding: 0 18px; }
+    .firework-two { right: 3%; }
 }
