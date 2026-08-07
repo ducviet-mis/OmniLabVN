@@ -325,7 +325,7 @@
                     </div>
 
                     <div class="tool-group paper-settings-group">
-                        <button type="button" class="tool-btn" id="btn-paper-settings" title="Kiểu giấy và màu giấy" aria-expanded="false" aria-controls="paper-settings-panel">
+                        <button type="button" class="tool-btn" id="btn-paper-settings" title="Kiểu giấy và màu giấy" aria-expanded="false" aria-controls="paper-settings-panel" onclick="event.preventDefault(); const panel=document.getElementById('paper-settings-panel'); const isHidden=panel.classList.toggle('hidden'); this.classList.toggle('active', !isHidden); this.setAttribute('aria-expanded', String(!isHidden));">
                             <i class="fa-solid fa-sheet-plastic"></i>
                         </button>
                     </div>
@@ -334,7 +334,7 @@
                 <section id="paper-settings-panel" class="paper-settings-panel hidden" aria-label="Cài đặt giấy">
                     <div class="paper-settings-heading">
                         <div><span class="paper-settings-kicker">GHI CHÚ</span><h3>Kiểu giấy &amp; màu sắc</h3></div>
-                        <button type="button" class="paper-settings-close" id="btn-close-paper-settings" title="Đóng"><i class="fa-solid fa-xmark"></i></button>
+                        <button type="button" class="paper-settings-close" id="btn-close-paper-settings" title="Đóng" onclick="event.preventDefault(); document.getElementById('paper-settings-panel').classList.add('hidden'); document.getElementById('btn-paper-settings').classList.remove('active'); document.getElementById('btn-paper-settings').setAttribute('aria-expanded','false');"><i class="fa-solid fa-xmark"></i></button>
                     </div>
                     <div class="paper-presets" role="group" aria-label="Chọn loại giấy">
                         <button type="button" class="paper-preset active" data-paper="grid" aria-pressed="true"><span class="paper-preview preview-grid"></span><span>Ô ly</span></button>
