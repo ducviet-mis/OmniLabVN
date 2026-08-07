@@ -58,11 +58,13 @@
         };
 
         toggle.addEventListener('click', (event) => {
+            if (event.defaultPrevented) return;
             event.stopPropagation();
             event.preventDefault();
             setPanel(panel.classList.contains('hidden'));
         });
         close?.addEventListener('click', (event) => {
+            if (event.defaultPrevented) return;
             event.preventDefault();
             event.stopPropagation();
             setPanel(false);
