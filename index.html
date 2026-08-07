@@ -323,7 +323,31 @@
                         <button class="tool-btn" id="btn-undo-text" title="Hoàn tác (Ctrl+Z)"><i class="fa-solid fa-rotate-left"></i></button>
                         <button class="tool-btn" id="btn-redo-text" title="Làm lại (Ctrl+Y)"><i class="fa-solid fa-rotate-right"></i></button>
                     </div>
+
+                    <div class="tool-group paper-settings-group">
+                        <button type="button" class="tool-btn" id="btn-paper-settings" title="Kiểu giấy và màu giấy" aria-expanded="false" aria-controls="paper-settings-panel">
+                            <i class="fa-solid fa-sheet-plastic"></i>
+                        </button>
+                    </div>
                 </div>
+
+                <section id="paper-settings-panel" class="paper-settings-panel hidden" aria-label="Cài đặt giấy">
+                    <div class="paper-settings-heading">
+                        <div><span class="paper-settings-kicker">GHI CHÚ</span><h3>Kiểu giấy &amp; màu sắc</h3></div>
+                        <button type="button" class="paper-settings-close" id="btn-close-paper-settings" title="Đóng"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="paper-presets" role="group" aria-label="Chọn loại giấy">
+                        <button type="button" class="paper-preset active" data-paper="grid" aria-pressed="true"><span class="paper-preview preview-grid"></span><span>Ô ly</span></button>
+                        <button type="button" class="paper-preset" data-paper="blank" aria-pressed="false"><span class="paper-preview preview-blank"></span><span>Trơn</span></button>
+                        <button type="button" class="paper-preset" data-paper="ruled" aria-pressed="false"><span class="paper-preview preview-ruled"></span><span>Kẻ ngang</span></button>
+                        <button type="button" class="paper-preset" data-paper="dots" aria-pressed="false"><span class="paper-preview preview-dots"></span><span>Chấm bi</span></button>
+                    </div>
+                    <div class="paper-controls">
+                        <label><span>Màu giấy</span><input type="color" id="paper-bg-color" value="#fffdf7"></label>
+                        <label><span>Màu đường kẻ</span><input type="color" id="paper-line-color" value="#efb8b8"></label>
+                        <label class="paper-density"><span>Khoảng cách</span><input type="range" id="paper-density" min="16" max="48" step="2" value="28"><output id="paper-density-value">28 px</output></label>
+                    </div>
+                </section>
             </div>
 
             <!-- Double Layer Canvas & Text Workspace -->
@@ -490,5 +514,6 @@
     <script src="editor.js"></script>
     <script src="canvas.js"></script>
     <script src="app.js"></script>
+    <script src="paper-settings.js"></script>
 </body>
 </html>
