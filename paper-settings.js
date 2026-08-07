@@ -52,37 +52,43 @@
         };
 
         const setPanel = (open) => {
-            panel.classList.toggle('hidden', !open);
-            toggle.classList.toggle('active', open);
-            toggle.setAttribute('aria-expanded', String(open));
-        };
+    panel.classList.toggle('hidden', !open);
+    toggle.classList.toggle('active', open);
+    toggle.setAttribute('aria-expanded', String(open));
+};
 
-        toggle.addEventListener('click', (event) => {
-            if (event.defaultPrevented) return;
-            event.stopPropagation();
-            event.preventDefault();
-            setPanel(panel.classList.contains('hidden'));
-        });
-        close?.addEventListener('click', (event) => {
-            if (event.defaultPrevented) return;
-            event.preventDefault();
-            event.stopPropagation();
-            setPanel(false);
-        });
-        panel.addEventListener('click', (event) => event.stopPropagation());
-        presets.forEach((button) => button.addEventListener('click', () => {
-            settings.paper = button.dataset.paper;
-            apply();
-        }));
-        bgInput.addEventListener('input', () => { settings.background = bgInput.value; apply(); });
-        lineInput.addEventListener('input', () => { settings.line = lineInput.value; apply(); });
-        densityInput.addEventListener('input', () => { settings.density = Number(densityInput.value); apply(); });
-        document.addEventListener('click', (event) => {
-            if (!panel.classList.contains('hidden') && !panel.contains(event.target) && !toggle.contains(event.target)) setPanel(false);
-        });
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') setPanel(false);
-        });
+// Toggle khi bấm nút Icon trên thanh công cụ
+toggle.addEventListener('click', (event) => {
+    event.stopPropagation();
+    event.preventDefault();
+    setPanel(panel.classList.contains('hidden'));
+});
+
+// Đóng khi bấm nút (X)
+close?.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setPanel(false);
+});
+
+// Tránh việc click bên trong bảng làm tắt bảng
+panel.addEventListener('click', (event) => {
+    event.stopPropagation();
+});
+
+// Click bất kỳ đâu ngoài bảng để tắt
+document.addEventListener('click', (event) => {
+    if (!panel.classList.contains('hidden')) {
+        setPanel(false);
+    }
+});
+
+// Bấm phím ESC để tắt
+document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && !panel.classList.contains('hidden')) {
+        setPanel(false);
+    }
+});
 
         apply({ persist: false });
     };
