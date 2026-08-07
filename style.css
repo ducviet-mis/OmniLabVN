@@ -983,11 +983,12 @@ button.active {
 }
 
 /* Paper settings */
-.workspace-toolbars { position: relative; }
+.workspace-toolbars { position: relative; z-index: 1000; }
 .paper-settings-group { margin-left: auto; }
 .paper-settings-panel {
     position: absolute;
-    z-index: 120;
+    z-index: 2000;
+    pointer-events: auto !important;
     top: calc(100% + 8px);
     right: 14px;
     width: min(440px, calc(100vw - 28px));
@@ -1073,6 +1074,7 @@ button.active {
 }
 
 .app-header::after {
+    content: "\\2605";
     position: absolute;
     top: 14px;
     left: 46%;
