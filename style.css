@@ -988,3 +988,91 @@ button.active {
         transition-duration: 0.001ms !important;
     }
 }
+
+/* National Day visual layer - CSS only; document text remains untouched. */
+:root {
+    --accent: #c91d2a;
+    --accent-hover: #a70f1a;
+    --accent-soft: #fff0c9;
+    --accent-glow: rgba(201, 29, 42, 0.25);
+    --paper: #fffaf0;
+    --paper-sunken: #fff5df;
+    --border-color: #f0d9aa;
+    --grid-line: rgba(201, 29, 42, 0.07);
+}
+
+[data-theme="dark"] {
+    --paper: #1d080b;
+    --paper-panel: #280c11;
+    --paper-sunken: #341016;
+    --accent: #f4c846;
+    --accent-hover: #ffdc68;
+    --accent-soft: rgba(244, 200, 70, 0.13);
+    --accent-glow: rgba(244, 200, 70, 0.21);
+    --border-color: #5d2730;
+    --grid-line: rgba(244, 200, 70, 0.055);
+}
+
+.app-header {
+    overflow: hidden;
+    background-color: #8d111c;
+    background-image: linear-gradient(105deg, #650912 0%, #bd1928 52%, #85101a 100%);
+    border-bottom: 3px solid #f1c33e;
+}
+
+.app-header::before {
+    content: "";
+    position: absolute;
+    top: -118px;
+    right: 17%;
+    width: 210px;
+    height: 210px;
+    border: 1px solid rgba(255, 220, 104, 0.4);
+    border-radius: 50%;
+    box-shadow: 0 0 0 20px rgba(255, 220, 104, 0.055), 0 0 0 40px rgba(255, 220, 104, 0.035);
+    pointer-events: none;
+}
+
+.app-header::after {
+    content: "\\2605";
+    position: absolute;
+    top: 14px;
+    left: 46%;
+    color: rgba(255, 222, 105, 0.36);
+    font-size: 34px;
+    pointer-events: none;
+}
+
+.app-header > * { position: relative; z-index: 1; }
+.logo-mark { background: linear-gradient(145deg, #f8dc66, #e6ae23); color: #850d17; box-shadow: 0 0 0 1px rgba(255,255,255,.22) inset, 0 4px 14px rgba(83, 5, 11, .35); }
+.logo-tagline { color: #ffe18a; }
+.note-title-badge { background: rgba(255, 236, 169, .12); border-color: rgba(255, 226, 113, .25); color: #fff4cf; }
+
+.main-container { background: radial-gradient(circle at 12% 14%, rgba(235, 188, 53, .12), transparent 25%), radial-gradient(circle at 88% 92%, rgba(203, 25, 38, .08), transparent 27%); }
+.split-pane { box-shadow: inset 0 3px 0 rgba(241, 195, 62, .35); }
+.pdf-toolbar, .workspace-toolbars { background-image: linear-gradient(90deg, rgba(201, 29, 42, .035), rgba(241, 195, 62, .08), rgba(201, 29, 42, .035)); }
+.resizer-bar { background: linear-gradient(180deg, #f8e7bc, #fff8ea); }
+.resizer-grip { background: linear-gradient(#c91d2a, #edbc34); }
+
+.workspace-viewport {
+    background-image:
+        radial-gradient(circle at 92% 8%, rgba(241, 195, 62, .11) 0 1px, transparent 2px),
+        radial-gradient(circle at 10% 92%, rgba(201, 29, 42, .09) 0 1px, transparent 2px),
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+}
+
+.tool-group { border-color: #efd69d; }
+.tool-btn:hover { background-color: #fff0c6; color: #a9121e; }
+.primary-btn, .quick-switch-fab { background: linear-gradient(145deg, #d5212e, #aa101a); box-shadow: 0 5px 15px rgba(157, 12, 22, .28); }
+.primary-btn:hover, .quick-switch-fab:hover { background: linear-gradient(145deg, #e02a35, #ba1520); }
+.page-indicator { border-color: #efd69d; }
+
+[data-theme="dark"] .app-header { background-image: linear-gradient(105deg, #3f060b, #74101a 52%, #4a070d); }
+[data-theme="dark"] .pdf-toolbar, [data-theme="dark"] .workspace-toolbars { background-image: linear-gradient(90deg, rgba(244, 200, 70, .04), rgba(201, 29, 42, .16), rgba(244, 200, 70, .04)); }
+[data-theme="dark"] .resizer-bar { background: #321016; }
+[data-theme="dark"] .tool-btn:hover { background-color: rgba(244, 200, 70, .12); color: #f4c846; }
+
+@media (max-width: 900px) {
+    .app-header::after { left: auto; right: 13px; opacity: .65; }
+}
