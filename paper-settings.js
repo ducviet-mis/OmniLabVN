@@ -59,9 +59,15 @@
 
         toggle.addEventListener('click', (event) => {
             event.stopPropagation();
+            event.preventDefault();
             setPanel(panel.classList.contains('hidden'));
         });
-        close?.addEventListener('click', () => setPanel(false));
+        close?.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            setPanel(false);
+        });
+        panel.addEventListener('click', (event) => event.stopPropagation());
         presets.forEach((button) => button.addEventListener('click', () => {
             settings.paper = button.dataset.paper;
             apply();
@@ -70,7 +76,10 @@
         lineInput.addEventListener('input', () => { settings.line = lineInput.value; apply(); });
         densityInput.addEventListener('input', () => { settings.density = Number(densityInput.value); apply(); });
         document.addEventListener('click', (event) => {
-            if (!panel.classList.contains('hidden') && !panel.contains(event.target) && event.target !== toggle) setPanel(false);
+            if (!panel.classList.contains('hidden') && !panel.contains(event.target) && !toggle.contains(event.target)) setPanel(false);
+        });
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') setPanel(false);
         });
 
         apply({ persist: false });
