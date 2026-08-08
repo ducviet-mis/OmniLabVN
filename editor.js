@@ -8,6 +8,11 @@ class RichTextEditor {
     constructor() {
         this.editor = document.getElementById('text-editor');
         this.savedRange = null; // luôn giữ vùng bôi đen (selection) gần nhất trong editor
+
+        // Đảm bảo hành vi xuống dòng nhất quán giữa các trình duyệt
+        // (Firefox mặc định dùng <br>, còn Chrome/Edge/Safari dùng <div>).
+        try { document.execCommand('defaultParagraphSeparator', false, 'div'); } catch (e) { /* no-op */ }
+
         this.initControls();
         this.initEvents();
         this.initSymbolPalette();
@@ -98,10 +103,17 @@ class RichTextEditor {
             else if (key === 'u') { e.preventDefault(); this.exec('underline'); }
         });
 
-        // Theo dõi selection liên tục: hễ selection đang nằm trong editor thì lưu lại.
-        // Đây là lưới an toàn thứ 2, phòng trường hợp mousedown/focus ở trên không bắt kịp.
+        // Khi có gõ chữ thật vào vị trí đang "chờ định dạng" (pending-style span),
+        // biến nó thành đoạn text bình thường: bỏ ký tự placeholder (zero-width space)
+        // và gỡ cờ pending, để không còn ảnh hưởng gì tới các lần dọn dẹp sau.
+        this.editor.addEventListener('input', () => this.commitPendingStyleSpans());
+
+        // Theo dõi selection liên tục: hễ selection đang nằm trong editor thì lưu lại,
+        // đồng thời dọn các pending-style span "mồ côi" (con trỏ đã rời đi mà chưa gõ gì)
+        // — đây chính là nguyên nhân gây phình chiều cao dòng khi đổi font/cỡ chữ.
         document.addEventListener('selectionchange', () => {
             this.saveSelection();
+            this.cleanupStalePendingSpans();
             this.updateActiveStates();
         });
     }
@@ -131,6 +143,143 @@ class RichTextEditor {
         const selection = window.getSelection();
         selection.removeAllRanges();
         selection.addRange(this.savedRange);
+        return true;
+    }
+
+    // ------------------------------------------------------------------
+    // PENDING-STYLE SPAN
+    // Khi người dùng đổi font/cỡ chữ mà KHÔNG bôi đen (chỉ đặt con trỏ),
+    // Word sẽ áp style đó cho ký tự sắp gõ tiếp theo. Để làm điều này trong
+    // contenteditable mà không để lại "rác" ảnh hưởng layout, ta chèn 1 span
+    // rỗng chứa ký tự zero-width (vô hình) mang style mong muốn, đặt con trỏ
+    // vào trong đó. Nếu người dùng gõ chữ -> span trở thành chữ thật (commit).
+    // Nếu người dùng rời đi mà không gõ gì -> span bị dọn dẹp ngay, tránh để
+    // lại phần tử vô hình nhưng vẫn mang font-size/font-family lớn, khiến
+    // chiều cao dòng (line-box) bị tính sai và phình to bất thường.
+    // ------------------------------------------------------------------
+
+    ZERO_WIDTH = '\u200B';
+
+    findPendingSpanAtCaret(range) {
+        if (!range || !range.collapsed) return null;
+        let node = range.startContainer;
+        if (node.nodeType === 3) node = node.parentElement;
+        if (node && node.nodeType === 1 && node.hasAttribute('data-pending-style')) return node;
+        return null;
+    }
+
+    insertPendingStyleSpan(styles) {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
+        const range = selection.getRangeAt(0);
+        if (!range.collapsed) return;
+
+        // Nếu con trỏ đang nằm ngay trong 1 pending-style span còn trống,
+        // gộp thêm style mới vào span đó (VD: vừa đổi font vừa đổi cỡ chữ
+        // liên tiếp khi chưa gõ gì) thay vì tạo lồng nhiều span rác.
+        const existingSpan = this.findPendingSpanAtCaret(range);
+        if (existingSpan) {
+            Object.assign(existingSpan.style, styles);
+            this.placeCaretInPendingSpan(existingSpan);
+            return;
+        }
+
+        this.cleanupStalePendingSpans();
+
+        const span = document.createElement('span');
+        Object.assign(span.style, styles);
+        span.setAttribute('data-pending-style', 'true');
+        span.appendChild(document.createTextNode(this.ZERO_WIDTH));
+        range.insertNode(span);
+
+        this.placeCaretInPendingSpan(span);
+    }
+
+    placeCaretInPendingSpan(span) {
+        const selection = window.getSelection();
+        const newRange = document.createRange();
+        newRange.setStart(span.firstChild, span.firstChild.textContent.length);
+        newRange.collapse(true);
+        selection.removeAllRanges();
+        selection.addRange(newRange);
+    }
+
+    /** Biến pending-style span thành text thường ngay khi người dùng gõ chữ vào đó. */
+    commitPendingStyleSpans() {
+        const spans = this.editor.querySelectorAll('span[data-pending-style]');
+        spans.forEach((span) => {
+            const text = span.textContent;
+            if (text === '') {
+                span.remove();
+                return;
+            }
+            if (text.length > this.ZERO_WIDTH.length && text.charAt(0) === this.ZERO_WIDTH) {
+                span.textContent = text.slice(this.ZERO_WIDTH.length);
+                span.removeAttribute('data-pending-style');
+
+                const selection = window.getSelection();
+                const r = document.createRange();
+                r.selectNodeContents(span);
+                r.collapse(false);
+                selection.removeAllRanges();
+                selection.addRange(r);
+            }
+        });
+    }
+
+    /** Xoá các pending-style span "mồ côi" (con trỏ đã rời đi mà vẫn còn rỗng). */
+    cleanupStalePendingSpans() {
+        if (!this.editor.querySelector('span[data-pending-style]')) return;
+
+        const selection = window.getSelection();
+        const activeSpan = (selection && selection.rangeCount > 0)
+            ? this.findPendingSpanAtCaret(selection.getRangeAt(0))
+            : null;
+
+        this.editor.querySelectorAll('span[data-pending-style]').forEach((span) => {
+            if (span === activeSpan) return;
+            if (span.textContent === this.ZERO_WIDTH || span.textContent === '') {
+                span.remove();
+            } else {
+                span.removeAttribute('data-pending-style');
+            }
+        });
+    }
+
+    /**
+     * Áp style lên vùng đang bôi đen (không collapsed). Dùng execCommand để
+     * trình duyệt tự tách đúng ranh giới các node, sau đó convert kết quả
+     * (thẻ <font> cũ, deprecated) thành <span> sạch với đúng style mong muốn.
+     * Trả về false nếu không có vùng bôi đen (để nơi gọi tự xử lý fallback).
+     */
+    applyStyleToSelection(kind, value) {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return false;
+        const range = selection.getRangeAt(0);
+        if (range.collapsed) return false;
+
+        if (kind === 'fontSize') {
+            // execCommand('fontSize') chỉ nhận số 1-7, nên gán tạm size=7
+            // (giá trị hiếm khi trùng nội dung có sẵn) rồi thay bằng px thật.
+            document.execCommand('fontSize', false, '7');
+            this.editor.querySelectorAll('font[size="7"]').forEach((f) => {
+                const span = document.createElement('span');
+                span.style.fontSize = value;
+                while (f.firstChild) span.appendChild(f.firstChild);
+                f.parentNode.replaceChild(span, f);
+            });
+        } else if (kind === 'fontFamily') {
+            // Dùng placeholder thay vì truyền thẳng tên font (có khoảng trắng)
+            // vào execCommand để tránh lỗi parse tên font ở 1 số trình duyệt.
+            const marker = '__omnilab_pending_font__';
+            document.execCommand('fontName', false, marker);
+            this.editor.querySelectorAll(`font[face="${marker}"]`).forEach((f) => {
+                const span = document.createElement('span');
+                span.style.fontFamily = value;
+                while (f.firstChild) span.appendChild(f.firstChild);
+                f.parentNode.replaceChild(span, f);
+            });
+        }
         return true;
     }
 
@@ -213,64 +362,27 @@ class RichTextEditor {
         this.editor.focus();
         this.restoreSelection();
 
-        const selection = window.getSelection();
-
-        // Trường hợp 1: Có văn bản được bôi đen -> Đổi font phần được chọn
-        if (selection && selection.rangeCount > 0 && !selection.getRangeAt(0).collapsed) {
-            document.execCommand('fontName', false, fontName);
-            this.saveSelection();
-            this.editor.focus();
-            return;
-        }
-
-        // Trường hợp 2: Không bôi đen -> Áp dụng font trực tiếp cho vị trí/đoạn gõ tiếp theo
-        document.execCommand('fontName', false, fontName);
-        this.editor.style.fontFamily = fontName;
-
-        if (selection && selection.rangeCount > 0) {
-            let node = selection.getRangeAt(0).commonAncestorContainer;
-            if (node.nodeType === 3) node = node.parentNode;
-
-            if (node && node !== this.editor) {
-                node.style.fontFamily = fontName;
-            }
+        const applied = this.applyStyleToSelection('fontFamily', fontName);
+        if (!applied) {
+            // Không có bôi đen -> chỉ đặt style "chờ" cho ký tự gõ tiếp theo,
+            // KHÔNG đổi font mặc định của toàn bộ editor (tránh làm lệch các
+            // dòng/đoạn khác đang dùng font khác nhau).
+            this.insertPendingStyleSpan({ fontFamily: fontName });
         }
 
         this.saveSelection();
         this.editor.focus();
+        this.updateActiveStates();
     }
 
     setFontSize(pixelSize) {
         this.editor.focus();
-
-        // Khôi phục lại đúng vùng bôi đen đã lưu trước khi <select> cướp focus.
-        // Đây là nguyên nhân chính khiến cỡ chữ "không đổi": lúc sự kiện change
-        // của <select> bắn ra thì selection trong editor đã bị mất/thay đổi.
         this.restoreSelection();
 
-        const selection = window.getSelection();
-        if (!selection || selection.rangeCount === 0) return;
-
-        // Dùng "chiêu" kinh điển: execCommand('fontSize') chỉ nhận giá trị 1-7,
-        // nên ta gán tạm size=7 (giá trị hiếm khi trùng với nội dung có sẵn),
-        // sau đó tìm đúng các thẻ <font size="7"> vừa được trình duyệt tạo ra
-        // và đổi chúng thành <span style="font-size: ...px"> theo đúng ý muốn.
-        // Cách này hoạt động ổn định cho cả trường hợp bôi đen nhiều dòng/nhiều
-        // thẻ lồng nhau, và cả khi con trỏ chỉ đứng yên (không bôi đen) để áp
-        // dụng cỡ chữ cho đoạn sắp gõ tiếp theo — điều mà cách extractContents
-        // thủ công trước đây không xử lý được.
-        document.execCommand('fontSize', false, '7');
-
-        const fontElements = this.editor.querySelectorAll('font[size="7"]');
-        fontElements.forEach((f) => {
-            f.removeAttribute('size');
-            f.style.fontSize = pixelSize;
-            // Đổi thẻ <font> (deprecated) sang <span> cho markup sạch hơn
-            const span = document.createElement('span');
-            span.style.fontSize = pixelSize;
-            while (f.firstChild) span.appendChild(f.firstChild);
-            f.parentNode.replaceChild(span, f);
-        });
+        const applied = this.applyStyleToSelection('fontSize', pixelSize);
+        if (!applied) {
+            this.insertPendingStyleSpan({ fontSize: pixelSize });
+        }
 
         this.saveSelection();
         this.editor.focus();
