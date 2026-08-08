@@ -166,9 +166,8 @@ class RichTextEditor {
     }
 
     exec(command, value = null) {
-        this.restoreSelection();
+        this.focusAndRestoreSelection();
         document.execCommand(command, false, value);
-        this.editor.focus();
         this.saveSelection();
         this.updateActiveStates();
     }
@@ -191,7 +190,49 @@ class RichTextEditor {
         selection.addRange(this.savedRange);
     }
 
+    focusAndRestoreSelection() {
+        this.editor.focus({ preventScroll: true });
+        this.restoreSelection();
+    }
+
+    applyTextStyle(property, value) {
+        this.focusAndRestoreSelection();
+
+        const selection = window.getSelection();
+        if (!selection || !selection.rangeCount) return;
+
+        const range = selection.getRangeAt(0);
+        if (!this.editor.contains(range.commonAncestorContainer)) return;
+
+        const styledSpan = document.createElement('span');
+        // A newly selected style must override styles from earlier nested spans.
+        styledSpan.style.setProperty(property, value, 'important');
+
+        if (range.collapsed) {
+            const marker = document.createTextNode('\u200B');
+            styledSpan.appendChild(marker);
+            range.insertNode(styledSpan);
+            range.setStart(marker, 1);
+            range.collapse(true);
+            selection.removeAllRanges();
+            selection.addRange(range);
+        } else {
+            styledSpan.appendChild(range.extractContents());
+            range.insertNode(styledSpan);
+            const updatedRange = document.createRange();
+            updatedRange.selectNodeContents(styledSpan);
+            selection.removeAllRanges();
+            selection.addRange(updatedRange);
+        }
+
+        this.editor.focus({ preventScroll: true });
+        this.saveSelection();
+    }
+
     setFontFamily(fontName) {
+        this.applyTextStyle('font-family', fontName);
+        return;
+
         this.restoreSelection();
         const selection = window.getSelection();
         
@@ -218,6 +259,9 @@ class RichTextEditor {
     }
 
     setFontSize(pixelSize) {
+        this.applyTextStyle('font-size', pixelSize);
+        return;
+
         this.restoreSelection();
         const selection = window.getSelection();
         if (!selection || !selection.rangeCount) return;
