@@ -7,7 +7,6 @@
 class RichTextEditor {
     constructor() {
         this.editor = document.getElementById('text-editor');
-        this.savedRange = null;
         this.initControls();
         this.initEvents();
         this.initSymbolPalette();
@@ -39,17 +38,6 @@ class RichTextEditor {
     }
 
     initEvents() {
-        // Save the editor range before a toolbar select receives focus. Native
-        // selects otherwise collapse the highlighted text, so font changes are
-        // applied at the caret instead of to the selected text.
-        ['mouseup', 'keyup', 'input', 'focus'].forEach((eventName) => {
-            this.editor.addEventListener(eventName, () => this.saveSelection());
-        });
-        [this.fontFamilySelect, this.fontSizeSelect].forEach((select) => {
-            select.addEventListener('pointerdown', () => this.saveSelection());
-            select.addEventListener('mousedown', () => this.saveSelection());
-        });
-
         // Executive Commands Execution
         this.fontFamilySelect.addEventListener('change', (e) => this.setFontFamily(e.target.value));
         this.fontSizeSelect.addEventListener('change', (e) => this.setFontSize(e.target.value));
@@ -97,10 +85,7 @@ class RichTextEditor {
         });
 
         // Keep Selection Active State Synced
-        document.addEventListener('selectionchange', () => {
-            this.saveSelection();
-            this.updateActiveStates();
-        });
+        document.addEventListener('selectionchange', () => this.updateActiveStates());
     }
 
     initSymbolPalette() {
@@ -166,74 +151,12 @@ class RichTextEditor {
     }
 
     exec(command, value = null) {
-        this.focusAndRestoreSelection();
         document.execCommand(command, false, value);
-        this.saveSelection();
+        this.editor.focus();
         this.updateActiveStates();
     }
 
-    saveSelection() {
-        const selection = window.getSelection();
-        if (!selection || !selection.rangeCount) return;
-
-        const range = selection.getRangeAt(0);
-        if (this.editor.contains(range.commonAncestorContainer)) {
-            this.savedRange = range.cloneRange();
-        }
-    }
-
-    restoreSelection() {
-        if (!this.savedRange || !this.editor.contains(this.savedRange.commonAncestorContainer)) return;
-
-        const selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(this.savedRange);
-    }
-
-    focusAndRestoreSelection() {
-        this.editor.focus({ preventScroll: true });
-        this.restoreSelection();
-    }
-
-    applyTextStyle(property, value) {
-        this.focusAndRestoreSelection();
-
-        const selection = window.getSelection();
-        if (!selection || !selection.rangeCount) return;
-
-        const range = selection.getRangeAt(0);
-        if (!this.editor.contains(range.commonAncestorContainer)) return;
-
-        const styledSpan = document.createElement('span');
-        // A newly selected style must override styles from earlier nested spans.
-        styledSpan.style.setProperty(property, value, 'important');
-
-        if (range.collapsed) {
-            const marker = document.createTextNode('\u200B');
-            styledSpan.appendChild(marker);
-            range.insertNode(styledSpan);
-            range.setStart(marker, 1);
-            range.collapse(true);
-            selection.removeAllRanges();
-            selection.addRange(range);
-        } else {
-            styledSpan.appendChild(range.extractContents());
-            range.insertNode(styledSpan);
-            const updatedRange = document.createRange();
-            updatedRange.selectNodeContents(styledSpan);
-            selection.removeAllRanges();
-            selection.addRange(updatedRange);
-        }
-
-        this.editor.focus({ preventScroll: true });
-        this.saveSelection();
-    }
-
     setFontFamily(fontName) {
-        this.applyTextStyle('font-family', fontName);
-        return;
-
-        this.restoreSelection();
         const selection = window.getSelection();
         
         // Trường hợp 1: Có văn bản được bôi đen -> Đổi font phần được chọn
@@ -259,40 +182,17 @@ class RichTextEditor {
     }
 
     setFontSize(pixelSize) {
-        this.applyTextStyle('font-size', pixelSize);
-        return;
-
-        this.restoreSelection();
         const selection = window.getSelection();
-        if (!selection || !selection.rangeCount) return;
+        if (!selection.rangeCount) return;
 
         const range = selection.getRangeAt(0);
-        if (!this.editor.contains(range.commonAncestorContainer)) return;
-
-        if (range.collapsed) {
-            // Keep the selected size for the text typed from this point onward.
-            document.execCommand('fontSize', false, '7');
-            const font = this.editor.querySelector('font[size="7"]');
-            if (font) {
-                font.removeAttribute('size');
-                font.style.fontSize = pixelSize;
-            }
-            this.editor.focus();
-            this.saveSelection();
-            return;
-        }
+        if (range.collapsed) return;
 
         const span = document.createElement('span');
         span.style.fontSize = pixelSize;
         span.appendChild(range.extractContents());
         range.insertNode(span);
-
-        selection.removeAllRanges();
-        const updatedRange = document.createRange();
-        updatedRange.selectNodeContents(span);
-        selection.addRange(updatedRange);
         this.editor.focus();
-        this.saveSelection();
     }
 
     setLineHeight(height) {
