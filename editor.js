@@ -7,6 +7,7 @@
 class RichTextEditor {
     constructor() {
         this.editor = document.getElementById('text-editor');
+        this.savedRange = null; // luôn giữ vùng bôi đen (selection) gần nhất trong editor
         this.initControls();
         this.initEvents();
         this.initSymbolPalette();
@@ -61,6 +62,19 @@ class RichTextEditor {
             btn.addEventListener('mousedown', (e) => e.preventDefault());
         });
 
+        // Các control KHÔNG THỂ preventDefault trên mousedown (select, input[type=color])
+        // vì làm vậy sẽ chặn luôn việc mở dropdown / bảng màu.
+        // => Giải pháp: chủ động lưu lại selection ngay trước khi chúng cướp focus,
+        // rồi khôi phục lại selection đó khi xử lý sự kiện change/input.
+        [
+            this.fontFamilySelect, this.fontSizeSelect,
+            this.textColorInput, this.textBgColorInput,
+            this.lineHeightSelect
+        ].forEach((el) => {
+            el.addEventListener('mousedown', () => this.saveSelection());
+            el.addEventListener('focus', () => this.saveSelection());
+        });
+
         this.textColorInput.addEventListener('input', (e) => this.exec('foreColor', e.target.value));
         this.textBgColorInput.addEventListener('input', (e) => this.exec('hiliteColor', e.target.value));
 
@@ -84,8 +98,40 @@ class RichTextEditor {
             else if (key === 'u') { e.preventDefault(); this.exec('underline'); }
         });
 
-        // Keep Selection Active State Synced
-        document.addEventListener('selectionchange', () => this.updateActiveStates());
+        // Theo dõi selection liên tục: hễ selection đang nằm trong editor thì lưu lại.
+        // Đây là lưới an toàn thứ 2, phòng trường hợp mousedown/focus ở trên không bắt kịp.
+        document.addEventListener('selectionchange', () => {
+            this.saveSelection();
+            this.updateActiveStates();
+        });
+    }
+
+    /**
+     * Lưu lại Range hiện tại của selection, CHỈ khi nó thực sự nằm trong editor.
+     * Nhờ vậy, khi người dùng click ra ngoài (vào select, input color...),
+     * ta vẫn còn "bản sao" vị trí bôi đen để khôi phục lại sau.
+     */
+    saveSelection() {
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
+
+        const range = selection.getRangeAt(0);
+        if (this.editor.contains(range.commonAncestorContainer)) {
+            this.savedRange = range.cloneRange();
+        }
+    }
+
+    /**
+     * Khôi phục lại selection đã lưu (nếu có) vào document.
+     * Trả về true nếu khôi phục thành công.
+     */
+    restoreSelection() {
+        if (!this.savedRange) return false;
+
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(this.savedRange);
+        return true;
     }
 
     initSymbolPalette() {
@@ -114,6 +160,7 @@ class RichTextEditor {
             });
             b.addEventListener('mouseenter', () => b.style.background = 'var(--accent-soft)');
             b.addEventListener('mouseleave', () => b.style.background = 'var(--paper-sunken)');
+            b.addEventListener('mousedown', (e) => e.preventDefault()); // giữ nguyên selection/caret trong editor
             b.addEventListener('click', () => {
                 this.insertTextAtCursor(sym);
                 this.hidePalette();
@@ -123,6 +170,10 @@ class RichTextEditor {
 
         document.body.appendChild(this.palette);
 
+        this.btnFormula.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            this.saveSelection();
+        });
         this.btnFormula.addEventListener('click', (e) => {
             e.stopPropagation();
             this.togglePalette();
@@ -151,53 +202,87 @@ class RichTextEditor {
     }
 
     exec(command, value = null) {
-        document.execCommand(command, false, value);
         this.editor.focus();
+        this.restoreSelection();
+        document.execCommand(command, false, value);
+        this.saveSelection();
         this.updateActiveStates();
     }
 
     setFontFamily(fontName) {
+        this.editor.focus();
+        this.restoreSelection();
+
         const selection = window.getSelection();
-        
+
         // Trường hợp 1: Có văn bản được bôi đen -> Đổi font phần được chọn
         if (selection && selection.rangeCount > 0 && !selection.getRangeAt(0).collapsed) {
-            this.exec('fontName', fontName);
+            document.execCommand('fontName', false, fontName);
+            this.saveSelection();
+            this.editor.focus();
             return;
         }
 
         // Trường hợp 2: Không bôi đen -> Áp dụng font trực tiếp cho vị trí/đoạn gõ tiếp theo
-        this.exec('fontName', fontName);
+        document.execCommand('fontName', false, fontName);
         this.editor.style.fontFamily = fontName;
 
         if (selection && selection.rangeCount > 0) {
             let node = selection.getRangeAt(0).commonAncestorContainer;
             if (node.nodeType === 3) node = node.parentNode;
-            
+
             if (node && node !== this.editor) {
                 node.style.fontFamily = fontName;
             }
         }
 
+        this.saveSelection();
         this.editor.focus();
     }
 
     setFontSize(pixelSize) {
-        const selection = window.getSelection();
-        if (!selection.rangeCount) return;
-
-        const range = selection.getRangeAt(0);
-        if (range.collapsed) return;
-
-        const span = document.createElement('span');
-        span.style.fontSize = pixelSize;
-        span.appendChild(range.extractContents());
-        range.insertNode(span);
         this.editor.focus();
+
+        // Khôi phục lại đúng vùng bôi đen đã lưu trước khi <select> cướp focus.
+        // Đây là nguyên nhân chính khiến cỡ chữ "không đổi": lúc sự kiện change
+        // của <select> bắn ra thì selection trong editor đã bị mất/thay đổi.
+        this.restoreSelection();
+
+        const selection = window.getSelection();
+        if (!selection || selection.rangeCount === 0) return;
+
+        // Dùng "chiêu" kinh điển: execCommand('fontSize') chỉ nhận giá trị 1-7,
+        // nên ta gán tạm size=7 (giá trị hiếm khi trùng với nội dung có sẵn),
+        // sau đó tìm đúng các thẻ <font size="7"> vừa được trình duyệt tạo ra
+        // và đổi chúng thành <span style="font-size: ...px"> theo đúng ý muốn.
+        // Cách này hoạt động ổn định cho cả trường hợp bôi đen nhiều dòng/nhiều
+        // thẻ lồng nhau, và cả khi con trỏ chỉ đứng yên (không bôi đen) để áp
+        // dụng cỡ chữ cho đoạn sắp gõ tiếp theo — điều mà cách extractContents
+        // thủ công trước đây không xử lý được.
+        document.execCommand('fontSize', false, '7');
+
+        const fontElements = this.editor.querySelectorAll('font[size="7"]');
+        fontElements.forEach((f) => {
+            f.removeAttribute('size');
+            f.style.fontSize = pixelSize;
+            // Đổi thẻ <font> (deprecated) sang <span> cho markup sạch hơn
+            const span = document.createElement('span');
+            span.style.fontSize = pixelSize;
+            while (f.firstChild) span.appendChild(f.firstChild);
+            f.parentNode.replaceChild(span, f);
+        });
+
+        this.saveSelection();
+        this.editor.focus();
+        this.updateActiveStates();
     }
 
     setLineHeight(height) {
+        this.editor.focus();
+        this.restoreSelection();
+
         const selection = window.getSelection();
-        if (!selection.rangeCount) return;
+        if (!selection || selection.rangeCount === 0) return;
 
         let node = selection.getRangeAt(0).commonAncestorContainer;
         if (node.nodeType === 3) node = node.parentNode;
@@ -213,6 +298,8 @@ class RichTextEditor {
         if (node === this.editor) {
             this.editor.style.lineHeight = height;
         }
+
+        this.saveSelection();
     }
 
     updateActiveStates() {
@@ -231,6 +318,7 @@ class RichTextEditor {
 
     insertTextAtCursor(text) {
         this.editor.focus();
+        this.restoreSelection();
         this.exec('insertText', text);
     }
 
